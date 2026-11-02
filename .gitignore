@@ -99,3 +99,8 @@ application-*.properties
 # Docker
 # ========================
 docker-compose.override.yml
+
+# Python
+__pycache__/
+*.py[cod]
+

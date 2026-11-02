@@ -1,0 +1,48 @@
+.wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  width: 100%;
+}
+
+.wrapper__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: var(--text-xs);
+  font-weight: var(--font-semibold);
+}
+
+.label {
+  color: var(--color-foreground);
+}
+
+.percentage {
+  color: var(--color-muted-foreground);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Track ─────────────────────────────────────────────────────────────── */
+.track {
+  width: 100%;
+  background-color: var(--color-muted);
+  border-radius: var(--radius-full);
+  overflow: hidden;
+  position: relative;
+}
+
+.track--sm { height: 6px; }
+.track--md { height: 10px; }
+.track--lg { height: 14px; }
+
+/* ── Bar ───────────────────────────────────────────────────────────────── */
+.bar {
+  height: 100%;
+  border-radius: var(--radius-full);
+  transition: width var(--transition-slow);
+}
+
+.bar--primary   { background-color: var(--color-primary); }
+.bar--secondary { background-color: var(--color-secondary); }
+.bar--accent    { background-color: var(--color-accent); }
+.bar--success   { background-color: var(--color-success); }
