@@ -18,6 +18,7 @@ ERD v2.2 đồng bộ với Đặc tả v3.2 (áp dụng Decision Register v0.1)
 
 | Bảng | Thay đổi | Quyết định / lý do |
 |---|---|---|
+| `users`, `adaptive_task_sessions` | `users.avatar_url` → `avatar_file_id` (FK); `requested_task_type` → `requested_task_types_json` | Khớp OpenAPI: `avatarResourceId` là ID file, `taskTypes` là mảng (rà soát cấp trường 03/11) |
 | `adaptive_task_hint_events` | **Bảng mới** (Should Have) | DEC-003: idempotency của hint; không ghi vào `learning_interactions` để không nhiễu ma trận `R` |
 | `adaptive_task_sessions` | Bỏ `requested_difficulty`; thêm `attempt_count`, `auto_retry_count`, `manual_retry_count`, `lease_expires_at`, `worker_id`, `next_retry_at`, `last_error_message` | DEC-001 (độ khó do server chọn theo ZPD), DEC-004 (lease, fencing, retry) |
 | `ai_knowledge_documents` | Thêm `source_text` (MEDIUMTEXT), CHECK theo `source_type`; thêm `attempt_count`, `lease_expires_at`, `next_retry_at` | DEC-002 (có chỗ lưu văn bản dán), DEC-004 |
@@ -170,7 +171,7 @@ erDiagram
 | `password_hash` | VARCHAR(255) | NOT NULL | Mật khẩu hash |
 | `full_name` | VARCHAR(255) | NOT NULL | Họ tên |
 | `phone_number` | VARCHAR(20) | NULL | Số điện thoại |
-| `avatar_url` | VARCHAR(500) | NULL | Ảnh đại diện |
+| `avatar_file_id` | BIGINT UNSIGNED | FK → file_resources.id, NULL | Ảnh đại diện (API `avatarResourceId`); FK thêm bằng ALTER vì `file_resources` tạo sau `users` |
 | `status` | ENUM | NOT NULL, DEFAULT ACTIVE | ACTIVE/INACTIVE/BLOCKED |
 | `email_verified` | BOOLEAN | NOT NULL, DEFAULT FALSE | Đã xác minh email |
 | `last_login_at` | DATETIME(6) | NULL | Đăng nhập gần nhất |
@@ -1149,7 +1150,8 @@ Kiểm tra Teacher thuộc Course
 6. Coupon snapshot ở Order; Payment không tính lại giá. `used_count` có thể vượt `total_usage_limit` nhẹ (chấp nhận, Đặc tả 10.2).
 7. `CHECK` cần MySQL 8.0.16 trở lên; nếu môi trường thấp hơn thì kiểm ở service.
 8. `adaptive_practice_configs.scope_key` là generated column (`COALESCE(lesson_id, 0)`), cần `STORED`/`VIRTUAL` hỗ trợ index; kiểm tra phiên bản MySQL khi viết migration.
-9. `payments.paid_webhook_log_id` ↔ `payment_webhook_logs.payment_id` tạo vòng FK: tạo `payments` và `payment_webhook_logs` trước, rồi `ALTER TABLE payments ADD FOREIGN KEY (paid_webhook_log_id)`.
+9. `users.avatar_file_id` → `file_resources` cũng là vòng FK (`file_resources.created_by` → `users`): thêm FK bằng `ALTER TABLE` sau khi tạo `file_resources`.
+9b. `payments.paid_webhook_log_id` ↔ `payment_webhook_logs.payment_id` tạo vòng FK: tạo `payments` và `payment_webhook_logs` trước, rồi `ALTER TABLE payments ADD FOREIGN KEY (paid_webhook_log_id)`.
 10. Một Order có Payment `REVIEW_REQUIRED` không bị job hết hạn chuyển `EXPIRED` (Đặc tả 10.6).
 11. `ai_knowledge_documents.source_text` dùng `MEDIUMTEXT`; CHECK theo `source_type` cần MySQL 8.0.16+.
 12. ENUM thêm giá trị cần `ALTER TABLE`; liệt kê đầy đủ ngay từ đầu để tránh migration không cần thiết.
@@ -1400,7 +1402,7 @@ Một lần Student yêu cầu bộ nhiệm vụ cá nhân hóa. Lưu ràng bu�
 | `config_id` | BIGINT UNSIGNED | FK → adaptive_practice_configs.id, NULL | Cấu hình đã áp dụng |
 | `constraints_json` | JSON | NULL | Snapshot `C` đã phân giải (môn, khối, kỹ năng, khoảng độ khó, loại bài) |
 | `requested_topics_json` | JSON | NULL | Student thu hẹp chủ đề trong phạm vi cho phép |
-| `requested_task_type` | VARCHAR(30) | NULL | Loại bài Student chọn, nằm trong tập cho phép |
+| `requested_task_types_json` | JSON | NULL | Các loại bài Student chọn (API `taskTypes`, mảng), nằm trong `allowed_task_types_json` |
 | `task_count` | SMALLINT UNSIGNED | NOT NULL | `K ≤ max_tasks_per_session` |
 | `client_request_id` | VARCHAR(64) | NULL | Idempotency tạo phiên |
 | `pipeline_version` | VARCHAR(100) | NULL | Pipeline + tham số (`w1..w3`, `α`, `β`, model LLM/embedding) |
