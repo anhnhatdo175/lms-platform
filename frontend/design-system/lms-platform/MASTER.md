@@ -39,14 +39,15 @@
 
 ### Typography
 
-- **Heading Font:** Baloo 2
-- **Body Font:** Comic Neue
-- **Mood:** kids, education, playful, friendly, colorful, learning
-- **Google Fonts:** [Baloo 2 + Comic Neue](https://fonts.googleapis.com/css2?family=Baloo+2:wght@400;500;600;700&family=Comic+Neue:wght@300;400;700&display=swap)
+- **Display / Heading Font:** Baloo 2 for page headings, section titles, and card titles; it adds a friendly education-focused character while staying clear in an interface.
+- **Body / UI Font:** Inter for paragraphs, labels, buttons, inputs, navigation, tables, and other dense or functional content.
+- **Accent Font:** Comic Neue may be used selectively for short student-facing messages, campaign banners, or gamification callouts. Do not use it for long-form text, navigation, forms, or dense data.
+- **Mood:** Friendly, engaging, and education-focused; playful accents without making the overall interface feel childish.
+- **Google Fonts:** [Baloo 2 + Inter + Comic Neue](https://fonts.googleapis.com/css2?family=Baloo+2:wght@400;500;600;700&family=Comic+Neue:wght@300;400;700&family=Inter:wght@300;400;500;600;700;800&display=swap)
 
 **CSS Import:**
 ```css
-@import url('https://fonts.googleapis.com/css2?family=Baloo+2:wght@400;500;600;700&family=Comic+Neue:wght@300;400;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Baloo+2:wght@400;500;600;700&family=Comic+Neue:wght@300;400;700&family=Inter:wght@300;400;500;600;700;800&display=swap');
 ```
 
 ### Spacing Variables
