@@ -94,6 +94,7 @@ application.properties
 application-*.properties
 !application.properties.example
 !application-*.properties.example
+/backend/local-mysql-setup.sql
 
 # ========================
 # Docker
@@ -103,4 +104,3 @@ docker-compose.override.yml
 # Python
 __pycache__/
 *.py[cod]
-

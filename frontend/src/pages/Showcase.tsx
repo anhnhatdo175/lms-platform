@@ -21,7 +21,7 @@ import { Navbar, Sidebar, Breadcrumb } from '../components/layout';
 import { CourseCard, StatCard, LessonItem } from '../components/patterns';
 import styles from './Showcase.module.css';
 
-interface DemoUser {
+interface DemoUser extends Record<string, unknown> {
   id: number;
   name: string;
   email: string;
@@ -378,7 +378,7 @@ export function Showcase() {
                   rating={4.9}
                   totalLessons={36}
                   durationMinutes={540}
-                  onAddToCart={(id) => setCartCount((prev) => prev + 1)}
+                  onAddToCart={(_id) => setCartCount((prev) => prev + 1)}
                   onEnrollClick={(id) => alert(`Bắt đầu thanh toán khóa học #${id}`)}
                 />
 
@@ -391,7 +391,7 @@ export function Showcase() {
                   rating={5.0}
                   totalLessons={28}
                   durationMinutes={420}
-                  onAddToCart={(id) => setCartCount((prev) => prev + 1)}
+                  onAddToCart={(_id) => setCartCount((prev) => prev + 1)}
                   onEnrollClick={(id) => alert(`Bắt đầu thanh toán khóa học #${id}`)}
                 />
 

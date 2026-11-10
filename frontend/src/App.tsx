@@ -1,6 +1,6 @@
-import { Showcase } from './pages/Showcase';
+import { LoginPage } from './pages/LoginPage';
 import './styles/global.css';
 
 export default function App() {
-  return <Showcase />;
+  return <LoginPage />;
 }
