@@ -1,0 +1,20 @@
+# Profile cho integration test (@ActiveProfiles("test")). Datasource do Testcontainers cung cấp.
+# Dùng .yml vì .gitignore của repo bỏ qua mọi application-*.properties.
+spring:
+  jpa:
+    open-in-view: false
+    properties:
+      hibernate.jdbc.time_zone: UTC
+  flyway:
+    enabled: true
+    # db/test-baseline tạo tạm bảng của A và C mà bảng của B tham chiếu; bỏ khi đã có migration thật của A và C
+    locations: classpath:db/test-baseline,classpath:db/migration
+
+payment:
+  late-grace-minutes: 15
+  order-payment-window-hours: 24
+  reference-prefix: LMS
+  sepay:
+    api-key: test-sepay-key
+    account-number: "0123456789"
+    bank-code: TEST

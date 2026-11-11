@@ -19,3 +19,13 @@ app.cors.allowed-origins=http://localhost:5173,http://127.0.0.1:5173
 # Actuator — chỉ expose health cho Docker healthcheck
 management.endpoints.web.exposure.include=health
 management.endpoint.health.show-details=never
+
+# Thanh toán (phần B)
+payment.late-grace-minutes=15
+payment.order-payment-window-hours=24
+# Phải khớp "Cấu trúc mã thanh toán" đã cấu hình trên SePay
+payment.reference-prefix=LMS
+payment.sepay.api-key=YOUR_SEPAY_WEBHOOK_API_KEY
+payment.sepay.account-number=YOUR_BANK_ACCOUNT_NUMBER
+payment.sepay.bank-code=YOUR_BANK_SHORT_CODE
+payment.sepay.qr-image-base-url=https://vietqr.app/img
