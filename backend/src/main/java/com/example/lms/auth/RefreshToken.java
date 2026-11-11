@@ -18,9 +18,10 @@ public class RefreshToken {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(columnDefinition = "BIGINT UNSIGNED")
     private Long id;
 
-    @Column(name = "user_id", nullable = false)
+    @Column(name = "user_id", nullable = false, columnDefinition = "BIGINT UNSIGNED")
     private Long userId;
 
     @Column(name = "token_hash", nullable = false, length = 64)
@@ -29,8 +30,14 @@ public class RefreshToken {
     @Column(name = "expires_at", nullable = false)
     private Instant expiresAt;
 
+    @Column(name = "family_id", length = 64)
+    private String familyId;
+
     @Column(name = "revoked_at")
     private Instant revokedAt;
+
+    @Column(name = "revoked_reason", length = 255)
+    private String revokedReason;
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
@@ -38,10 +45,11 @@ public class RefreshToken {
     protected RefreshToken() {
     }
 
-    public RefreshToken(Long userId, String tokenHash, Instant expiresAt) {
+    public RefreshToken(Long userId, String tokenHash, Instant expiresAt, String familyId) {
         this.userId = userId;
         this.tokenHash = tokenHash;
         this.expiresAt = expiresAt;
+        this.familyId = familyId;
     }
 
     @PrePersist
@@ -63,7 +71,16 @@ public class RefreshToken {
         return revokedAt;
     }
 
-    public void revoke(Instant revokedAt) {
+    public String getFamilyId() {
+        return familyId;
+    }
+
+    public void assignFamilyId(String familyId) {
+        this.familyId = familyId;
+    }
+
+    public void revoke(Instant revokedAt, String reason) {
         this.revokedAt = revokedAt;
+        this.revokedReason = reason;
     }
 }

@@ -17,7 +17,7 @@ export function Avatar({
   className = '',
   ...props
 }: AvatarProps) {
-  const [hasImageError, setHasImageError] = useState(false);
+  const [failedSrc, setFailedSrc] = useState<string | null>(null);
 
   const getInitials = (text: string) => {
     if (!text.trim()) return '';
@@ -33,7 +33,7 @@ export function Avatar({
       className={`${styles.avatar} ${styles[`avatar--${size}`]} ${className}`}
       {...props}
     >
-      {src && !hasImageError ? (
+      {src && failedSrc !== src ? (
         <img
           src={src}
           alt={name || 'Avatar người dùng'}
@@ -41,7 +41,7 @@ export function Avatar({
           width="80"
           height="80"
           loading="lazy"
-          onError={() => setHasImageError(true)}
+          onError={() => setFailedSrc(src)}
         />
       ) : initials ? (
         <span className={styles.avatar__initials}>{initials}</span>

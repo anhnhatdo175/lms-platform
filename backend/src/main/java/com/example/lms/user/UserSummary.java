@@ -1,22 +1,20 @@
 package com.example.lms.user;
 
-import java.time.Instant;
+import java.util.List;
 
 public record UserSummary(
         Long id,
-        String fullName,
         String email,
-        UserRole role,
-        UserStatus status,
-        Instant createdAt) {
+        String displayName,
+        Long avatarResourceId,
+        List<UserRole> roles) {
 
     public static UserSummary from(User user) {
         return new UserSummary(
                 user.getId(),
-                user.getFullName(),
                 user.getEmail(),
-                user.getRole(),
-                user.getStatus(),
-                user.getCreatedAt());
+                user.getFullName(),
+                user.getAvatarFileId(),
+                user.getRoles().stream().sorted().toList());
     }
 }

@@ -12,6 +12,10 @@ export default defineConfig(({ mode }) => {
         '/api': {
           target: env.VITE_DEV_API_PROXY_TARGET ?? 'http://localhost:8080',
         },
+        '/lms-files': {
+          target: env.VITE_FILE_STORAGE_PROXY_TARGET ?? 'http://127.0.0.1:9000',
+          changeOrigin: false,
+        },
       },
     },
     resolve: {

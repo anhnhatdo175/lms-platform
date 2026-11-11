@@ -48,9 +48,10 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                         var authentication = new UsernamePasswordAuthenticationToken(
                                 principal,
                                 null,
-                                java.util.List.of(
-                                        new org.springframework.security.core.authority.SimpleGrantedAuthority(
-                                                "ROLE_" + account.getRole().name())));
+                                account.getRoles().stream()
+                                        .map(role -> new org.springframework.security.core.authority.SimpleGrantedAuthority(
+                                                "ROLE_" + role.name()))
+                                        .toList());
                         var context = SecurityContextHolder.createEmptyContext();
                         context.setAuthentication(authentication);
                         SecurityContextHolder.setContext(context);

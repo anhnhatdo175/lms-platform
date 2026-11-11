@@ -13,18 +13,23 @@ public interface UserRepository extends JpaRepository<User, Long> {
 
     boolean existsByEmail(String email);
 
-    long countByRoleAndStatus(UserRole role, UserStatus status);
-
-    long countByRole(UserRole role);
-
-    long countByStatus(UserStatus status);
+    boolean existsByAvatarFileId(Long avatarFileId);
 
     @Query("""
-            select user from User user
+            select count(distinct user) from User user
+            join user.roleAssignments assignment
+            where assignment.role.code = :role and user.status = :status
+            """)
+    long countByRoleAndStatus(@Param("role") UserRole role, @Param("status") UserStatus status);
+
+    @Query("""
+            select distinct user from User user
             where (:query is null
                 or lower(user.fullName) like lower(concat('%', :query, '%'))
                 or lower(user.email) like lower(concat('%', :query, '%')))
-              and (:role is null or user.role = :role)
+              and (:role is null or exists (
+                select assignment.id from UserRoleAssignment assignment
+                where assignment.user = user and assignment.role.code = :role))
               and (:status is null or user.status = :status)
             """)
     Page<User> searchUsers(

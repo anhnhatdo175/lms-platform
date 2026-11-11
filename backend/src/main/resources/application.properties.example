@@ -7,6 +7,7 @@ spring.datasource.password=YOUR_DB_PASSWORD
 spring.datasource.driver-class-name=com.mysql.cj.jdbc.Driver
 spring.jpa.hibernate.ddl-auto=validate
 spring.flyway.enabled=true
+spring.flyway.locations=classpath:db/migration,classpath:db/migration-mysql
 
 # Authentication
 app.jwt.secret-base64=REPLACE_WITH_BASE64_ENCODED_RANDOM_SECRET_OF_AT_LEAST_32_BYTES
@@ -15,6 +16,35 @@ app.jwt.access-token-ttl=PT15M
 app.jwt.refresh-token-ttl=P14D
 app.auth.refresh-cookie-secure=false
 app.cors.allowed-origins=http://localhost:5173,http://127.0.0.1:5173
+
+# Local dev admin bootstrap (development profile only; never commit credentials)
+app.auth.bootstrap-admin.email=${LMS_BOOTSTRAP_ADMIN_EMAIL:}
+app.auth.bootstrap-admin.password=${LMS_BOOTSTRAP_ADMIN_PASSWORD:}
+app.auth.bootstrap-admin.display-name=${LMS_BOOTSTRAP_ADMIN_NAME:LMS Administrator}
+
+# SMTP relay for password recovery (disabled until explicitly configured)
+spring.mail.host=${SMTP_HOST:}
+spring.mail.port=${SMTP_PORT:587}
+spring.mail.username=${SMTP_USERNAME:}
+spring.mail.password=${SMTP_PASSWORD:}
+spring.mail.properties.mail.smtp.auth=${SMTP_AUTH:true}
+spring.mail.properties.mail.smtp.starttls.enable=${SMTP_STARTTLS_ENABLE:true}
+spring.mail.properties.mail.smtp.starttls.required=${SMTP_STARTTLS_REQUIRED:true}
+spring.mail.properties.mail.smtp.connectiontimeout=5000
+spring.mail.properties.mail.smtp.timeout=5000
+spring.mail.properties.mail.smtp.writetimeout=5000
+app.mail.enabled=${SMTP_ENABLED:false}
+app.mail.from=${SMTP_FROM:}
+app.auth.password-reset-url=${PASSWORD_RESET_URL:http://localhost:5173/}
+management.health.mail.enabled=${SMTP_ENABLED:false}
+
+# S3-compatible file storage (MinIO locally)
+app.file-storage.endpoint=${FILE_STORAGE_ENDPOINT:http://localhost:9000}
+app.file-storage.public-endpoint=${FILE_STORAGE_PUBLIC_ENDPOINT:http://localhost:9000}
+app.file-storage.access-key=${FILE_STORAGE_ACCESS_KEY:lmsminio}
+app.file-storage.secret-key=${FILE_STORAGE_SECRET_KEY:REPLACE_WITH_A_LOCAL_MINIO_PASSWORD}
+app.file-storage.region=${FILE_STORAGE_REGION:us-east-1}
+app.file-storage.bucket=${FILE_STORAGE_BUCKET:lms-files}
 
 # Actuator — chỉ expose health cho Docker healthcheck
 management.endpoints.web.exposure.include=health

@@ -1,13 +1,15 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import {
   ApiRequestError,
+  getFileResource,
   listUsers,
   updateUser,
   type ManagedUser,
-  type UserDirectory,
+  type UserPage,
   type UserRole,
   type UserStatus,
 } from '../services/authApi';
+import { Avatar } from '../components/ui/Avatar';
 import styles from './UsersPage.module.css';
 
 interface UsersPageProps {
@@ -23,11 +25,12 @@ const roleLabels: Record<UserRole, string> = {
 
 const statusLabels: Record<UserStatus, string> = {
   ACTIVE: 'Đang hoạt động',
-  LOCKED: 'Đã khóa',
+  INACTIVE: 'Đã vô hiệu hóa',
+  BLOCKED: 'Đã chặn',
 };
 
 export function UsersPage({ accessToken, currentUserId }: UsersPageProps) {
-  const [directory, setDirectory] = useState<UserDirectory | null>(null);
+  const [directory, setDirectory] = useState<UserPage | null>(null);
   const [queryInput, setQueryInput] = useState('');
   const [query, setQuery] = useState('');
   const [role, setRole] = useState<UserRole | ''>('');
@@ -38,8 +41,9 @@ export function UsersPage({ accessToken, currentUserId }: UsersPageProps) {
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState('');
   const [selectedUser, setSelectedUser] = useState<ManagedUser | null>(null);
-  const [editedRole, setEditedRole] = useState<UserRole>('STUDENT');
+  const [editedRoles, setEditedRoles] = useState<UserRole[]>(['STUDENT']);
   const [editedStatus, setEditedStatus] = useState<UserStatus>('ACTIVE');
+  const [statusReason, setStatusReason] = useState('');
   const dialogRef = useRef<HTMLElement | null>(null);
   const editorTriggerRef = useRef<HTMLButtonElement | null>(null);
   const isSavingRef = useRef(false);
@@ -76,7 +80,7 @@ export function UsersPage({ accessToken, currentUserId }: UsersPageProps) {
   useEffect(() => {
     if (!selectedUser || !dialogRef.current) return undefined;
     const dialog = dialogRef.current;
-    const focusableSelector = 'button:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])';
+    const focusableSelector = 'button:not([disabled]), select:not([disabled]), input:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
     const focusableElements = () => Array.from(dialog.querySelectorAll<HTMLElement>(focusableSelector));
 
     focusableElements()[0]?.focus();
@@ -124,14 +128,15 @@ export function UsersPage({ accessToken, currentUserId }: UsersPageProps) {
   function openEditor(user: ManagedUser, trigger: HTMLButtonElement) {
     editorTriggerRef.current = trigger;
     setSelectedUser(user);
-    setEditedRole(user.role);
+    setEditedRoles(user.roles);
     setEditedStatus(user.status);
+    setStatusReason('');
   }
 
   async function saveUser() {
     if (!selectedUser || isSaving) return;
-    if (selectedUser.id === currentUserId && editedStatus === 'LOCKED') {
-      setError('Bạn không thể tự khóa tài khoản của mình.');
+    if (selectedUser.id === currentUserId && editedStatus !== 'ACTIVE') {
+      setError('Bạn không thể tự vô hiệu hóa tài khoản của mình.');
       return;
     }
 
@@ -139,17 +144,13 @@ export function UsersPage({ accessToken, currentUserId }: UsersPageProps) {
     setError('');
     try {
       const updated = await updateUser(accessToken, selectedUser.id, {
-        role: editedRole !== selectedUser.role ? editedRole : undefined,
+        roles: !sameRoles(editedRoles, selectedUser.roles) ? editedRoles : undefined,
         status: editedStatus !== selectedUser.status ? editedStatus : undefined,
+        reason: editedStatus !== selectedUser.status ? statusReason.trim() || undefined : undefined,
       });
       setDirectory((current) => current && ({
         ...current,
-        items: current.items.map((user) => user.id === updated.id ? updated : user),
-        activeUsers: current.activeUsers + Number(updated.status === 'ACTIVE') - Number(selectedUser.status === 'ACTIVE'),
-        lockedUsers: current.lockedUsers + Number(updated.status === 'LOCKED') - Number(selectedUser.status === 'LOCKED'),
-        studentUsers: current.studentUsers + Number(updated.role === 'STUDENT') - Number(selectedUser.role === 'STUDENT'),
-        teacherUsers: current.teacherUsers + Number(updated.role === 'TEACHER') - Number(selectedUser.role === 'TEACHER'),
-        adminUsers: current.adminUsers + Number(updated.role === 'ADMIN') - Number(selectedUser.role === 'ADMIN'),
+        data: current.data.map((user) => user.id === updated.id ? updated : user),
       }));
       setSelectedUser(null);
     } catch (cause) {
@@ -181,20 +182,20 @@ export function UsersPage({ accessToken, currentUserId }: UsersPageProps) {
       </header>
 
       <div className={styles.metrics} aria-label="Thống kê người dùng">
-        <Metric label="Tổng tài khoản" value={directory?.totalElements} isLoading={isLoading} />
-        <Metric label="Đang hoạt động" value={directory?.activeUsers} isLoading={isLoading} tone="green" />
-        <Metric label="Học viên" value={directory?.studentUsers} isLoading={isLoading} tone="teal" />
-        <Metric label="Giảng viên" value={directory?.teacherUsers} isLoading={isLoading} tone="amber" />
+        <Metric label="Tổng kết quả" value={directory?.meta.totalElements} isLoading={isLoading} />
+        <Metric label="Kết quả trang này" value={directory?.data.length} isLoading={isLoading} tone="green" />
+        <Metric label="Trang hiện tại" value={directory ? directory.meta.page + 1 : undefined} isLoading={isLoading} tone="teal" />
+        <Metric label="Tổng số trang" value={directory?.meta.totalPages} isLoading={isLoading} tone="amber" />
       </div>
 
       <div className={styles.directoryCard}>
         <div className={styles.directoryHeader}>
           <div>
             <h3>Danh sách tài khoản</h3>
-            <p>{directory ? `${directory.totalElements.toLocaleString('vi-VN')} tài khoản` : 'Đang tải dữ liệu'}</p>
+            <p>{directory ? `${directory.meta.totalElements.toLocaleString('vi-VN')} tài khoản` : 'Đang tải dữ liệu'}</p>
           </div>
           <span className={styles.adminCount}>
-            {directory?.adminUsers ?? '—'} quản trị viên
+            {directory?.data.length ?? '—'} kết quả trang này
           </span>
         </div>
 
@@ -242,7 +243,8 @@ export function UsersPage({ accessToken, currentUserId }: UsersPageProps) {
             >
               <option value="">Tất cả trạng thái</option>
               <option value="ACTIVE">Đang hoạt động</option>
-              <option value="LOCKED">Đã khóa</option>
+              <option value="INACTIVE">Đã vô hiệu hóa</option>
+              <option value="BLOCKED">Đã chặn</option>
             </select>
           </label>
           <button className={styles.searchButton} type="submit">Tìm kiếm</button>
@@ -279,22 +281,22 @@ export function UsersPage({ accessToken, currentUserId }: UsersPageProps) {
               {isLoading && (
                 <tr><td className={styles.tableMessage} colSpan={5}>Đang tải danh sách người dùng...</td></tr>
               )}
-              {!isLoading && !error && directory?.items.length === 0 && (
+              {!isLoading && !error && directory?.data.length === 0 && (
                 <tr><td className={styles.tableMessage} colSpan={5}>Không tìm thấy tài khoản phù hợp.</td></tr>
               )}
-              {!isLoading && directory?.items.map((user) => (
+              {!isLoading && directory?.data.map((user) => (
                 <tr key={user.id}>
                   <td>
                     <div className={styles.userCell}>
-                      <span className={styles.avatar} aria-hidden="true">{initials(user.fullName)}</span>
+                      <ManagedUserAvatar user={user} accessToken={accessToken} />
                       <span className={styles.userText}>
-                        <strong>{user.fullName}</strong>
+                        <strong>{user.displayName}</strong>
                         <small>{user.email}</small>
                       </span>
                       {user.id === currentUserId && <span className={styles.youTag}>Bạn</span>}
                     </div>
                   </td>
-                  <td><RoleBadge role={user.role} /></td>
+                  <td><RoleBadges roles={user.roles} /></td>
                   <td><StatusBadge status={user.status} /></td>
                   <td className={styles.dateCell}>{formatDate(user.createdAt)}</td>
                   <td className={styles.actionCell}>
@@ -314,13 +316,13 @@ export function UsersPage({ accessToken, currentUserId }: UsersPageProps) {
 
         <footer className={styles.pagination}>
           <span>
-            {directory && directory.totalElements > 0
-              ? `Trang ${directory.page + 1} / ${Math.max(directory.totalPages, 1)}`
+            {directory && directory.meta.totalElements > 0
+              ? `Trang ${directory.meta.page + 1} / ${Math.max(directory.meta.totalPages, 1)}`
               : 'Không có kết quả'}
           </span>
           <div>
             <button
-              disabled={!directory || directory.page <= 0 || isLoading}
+              disabled={!directory || directory.meta.page <= 0 || isLoading}
               onClick={() => {
                 setIsLoading(true);
                 setError('');
@@ -331,7 +333,7 @@ export function UsersPage({ accessToken, currentUserId }: UsersPageProps) {
               Trước
             </button>
             <button
-              disabled={!directory || directory.totalPages === 0 || directory.page >= directory.totalPages - 1 || isLoading}
+              disabled={!directory || directory.meta.totalPages === 0 || directory.meta.page >= directory.meta.totalPages - 1 || isLoading}
               onClick={() => {
                 setIsLoading(true);
                 setError('');
@@ -374,24 +376,50 @@ export function UsersPage({ accessToken, currentUserId }: UsersPageProps) {
               </button>
             </div>
             <p className={styles.eyebrow}>CẬP NHẬT TÀI KHOẢN</p>
-            <h3 id="edit-user-title">{selectedUser.fullName}</h3>
+            <h3 id="edit-user-title">{selectedUser.displayName}</h3>
             <p className={styles.dialogEmail}>{selectedUser.email}</p>
 
-            <label className={styles.dialogField}>
-              <span>Vai trò</span>
-              <select value={editedRole} onChange={(event) => setEditedRole(event.target.value as UserRole)}>
-                <option value="STUDENT">Học viên</option>
-                <option value="TEACHER">Giảng viên</option>
-                <option value="ADMIN">Quản trị viên</option>
-              </select>
-            </label>
+            <fieldset className={`${styles.dialogField} ${styles.roleOptions}`}>
+              <legend>Vai trò (có thể chọn nhiều)</legend>
+              {(['STUDENT', 'TEACHER', 'ADMIN'] as const).map((role) => (
+                <label key={role}>
+                  <input
+                    checked={editedRoles.includes(role)}
+                    onChange={() => {
+                      setError('');
+                      if (editedRoles.includes(role) && editedRoles.length === 1) {
+                        setError('Tài khoản phải có ít nhất một vai trò.');
+                        return;
+                      }
+                      setEditedRoles(editedRoles.includes(role)
+                        ? editedRoles.filter((value) => value !== role)
+                        : [...editedRoles, role]);
+                    }}
+                    type="checkbox"
+                  />
+                  <span>{roleLabels[role]}</span>
+                </label>
+              ))}
+            </fieldset>
             <label className={styles.dialogField}>
               <span>Trạng thái tài khoản</span>
               <select value={editedStatus} onChange={(event) => setEditedStatus(event.target.value as UserStatus)}>
                 <option value="ACTIVE">Đang hoạt động</option>
-                <option value="LOCKED">Đã khóa</option>
+                <option value="INACTIVE">Đã vô hiệu hóa</option>
+                <option value="BLOCKED">Đã chặn</option>
               </select>
             </label>
+            {editedStatus !== selectedUser.status && (
+              <label className={styles.dialogField}>
+                <span>Lý do thay đổi (không bắt buộc)</span>
+                <textarea
+                  maxLength={1000}
+                  onChange={(event) => setStatusReason(event.target.value)}
+                  rows={3}
+                  value={statusReason}
+                />
+              </label>
+            )}
             {error && <p className={styles.dialogError} role="alert">{error}</p>}
             <div className={styles.dialogActions}>
               <button
@@ -433,24 +461,75 @@ function Metric({
   );
 }
 
-function RoleBadge({ role }: { role: UserRole }) {
-  return <span className={`${styles.roleBadge} ${styles[`role_${role.toLowerCase()}`]}`}>{roleLabels[role]}</span>;
+function ManagedUserAvatar({
+  user,
+  accessToken,
+}: {
+  user: ManagedUser;
+  accessToken: string;
+}) {
+  const [avatarUrl, setAvatarUrl] = useState<string>();
+
+  useEffect(() => {
+    let isCurrent = true;
+    let refreshTimer: number | undefined;
+    setAvatarUrl(undefined);
+    if (user.avatarResourceId === null) return undefined;
+
+    async function refreshAvatarUrl() {
+      try {
+        const resource = await getFileResource(accessToken, user.avatarResourceId!);
+        if (isCurrent) {
+          setAvatarUrl(resource.status === 'READY' ? resource.downloadUrl ?? undefined : undefined);
+          refreshTimer = window.setTimeout(refreshAvatarUrl, 4 * 60 * 1000);
+        }
+      } catch (cause) {
+        if (isCurrent) {
+          console.error(`Unable to load avatar for user ${user.id}.`, cause);
+          refreshTimer = window.setTimeout(refreshAvatarUrl, 30 * 1000);
+        }
+      }
+    }
+
+    void refreshAvatarUrl();
+    return () => {
+      isCurrent = false;
+      if (refreshTimer !== undefined) window.clearTimeout(refreshTimer);
+    };
+  }, [accessToken, user.avatarResourceId, user.id]);
+
+  return <Avatar className={styles.avatar} name={user.displayName} size="sm" src={avatarUrl} />;
+}
+
+function RoleBadges({ roles }: { roles: UserRole[] }) {
+  return (
+    <span className={styles.roleList}>
+      {roles.map((role) => (
+        <span key={role} className={`${styles.roleBadge} ${styles[`role_${role.toLowerCase()}`]}`}>
+          {roleLabels[role]}
+        </span>
+      ))}
+    </span>
+  );
 }
 
 function StatusBadge({ status }: { status: UserStatus }) {
+  const statusClass = status === 'ACTIVE'
+    ? styles.statusActive
+    : status === 'INACTIVE' ? styles.statusInactive : styles.statusBlocked;
   return (
-    <span className={`${styles.statusBadge} ${status === 'ACTIVE' ? styles.statusActive : styles.statusLocked}`}>
+    <span className={`${styles.statusBadge} ${statusClass}`}>
       <span aria-hidden="true" />
       {statusLabels[status]}
     </span>
   );
 }
 
-function initials(name: string) {
-  return name.trim().split(/\s+/).slice(-2).map((part) => part[0]?.toLocaleUpperCase('vi-VN')).join('');
-}
-
 function formatDate(value: string) {
   return new Intl.DateTimeFormat('vi-VN', { day: '2-digit', month: 'short', year: 'numeric' })
     .format(new Date(value));
+}
+
+function sameRoles(left: UserRole[], right: UserRole[]) {
+  return left.length === right.length && left.every((role) => right.includes(role));
 }

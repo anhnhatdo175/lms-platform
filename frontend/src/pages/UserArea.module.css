@@ -218,6 +218,63 @@
   font-size: 19px;
 }
 
+.avatarEditor {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 18px;
+}
+
+.avatarEditor .largeAvatar {
+  width: 64px;
+  height: 64px;
+  margin: 0;
+  font-size: 17px;
+}
+
+.avatarActions {
+  position: relative;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.avatarActions small {
+  flex-basis: 100%;
+  color: #758580;
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.hiddenFileInput {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  clip-path: inset(50%);
+}
+
+.removeAvatar {
+  min-height: 40px;
+  padding: 0 12px;
+  border: 1px solid #dce6e2;
+  border-radius: 6px;
+  background: #fff;
+  color: #49615b;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.removeAvatar:hover:not(:disabled) {
+  border-color: #c4d6d0;
+  background: #f6faf8;
+}
+
+.removeAvatar:disabled { cursor: wait; opacity: 0.65; }
+
 .identityCard h2 {
   max-width: 100%;
   overflow-wrap: anywhere;

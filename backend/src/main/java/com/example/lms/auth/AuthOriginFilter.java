@@ -30,10 +30,13 @@ public class AuthOriginFilter extends OncePerRequestFilter {
     protected boolean shouldNotFilter(HttpServletRequest request) {
         String path = request.getServletPath();
         return !("POST".equals(request.getMethod())
-                && ("/api/auth/login".equals(path)
-                        || "/api/auth/register".equals(path)
-                        || "/api/auth/refresh".equals(path)
-                        || "/api/auth/logout".equals(path)));
+                && ("/api/v1/auth/login".equals(path)
+                        || "/api/v1/auth/register".equals(path)
+                        || "/api/v1/auth/refresh".equals(path)
+                        || "/api/v1/auth/logout".equals(path)
+                        || "/api/v1/auth/forgot-password".equals(path)
+                        || "/api/v1/auth/reset-password".equals(path)
+                        || "/api/v1/me/password".equals(path)));
     }
 
     @Override
@@ -46,7 +49,8 @@ public class AuthOriginFilter extends OncePerRequestFilter {
             response.setStatus(HttpStatus.FORBIDDEN.value());
             response.setContentType(MediaType.APPLICATION_JSON_VALUE);
             response.getWriter().write(
-                    "{\"error\":{\"code\":\"ORIGIN_NOT_ALLOWED\",\"message\":\"Nguồn yêu cầu không được phép.\"}}");
+                    "{\"error\":{\"code\":\"ORIGIN_NOT_ALLOWED\",\"message\":\"Nguồn yêu cầu không được phép.\",\"traceId\":\""
+                            + java.util.UUID.randomUUID() + "\"}}");
             return;
         }
         filterChain.doFilter(request, response);

@@ -261,7 +261,7 @@
   outline: none;
   background: var(--login-surface);
   color: var(--login-ink);
-  font-size: 14px;
+  font-size: 16px;
   transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
 }
 
@@ -380,6 +380,10 @@
 
 .notice:empty {
   display: none;
+}
+
+.noticeSuccess {
+  color: #176b48;
 }
 
 .modeSwitch {
@@ -557,5 +561,19 @@
   .pageFooter {
     flex-direction: column;
     gap: 4px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .loginContent {
+    animation: none;
+  }
+
+  .field input,
+  .forgotPassword,
+  .visibilityButton,
+  .submitButton,
+  .submitButton svg {
+    transition: none;
   }
 }

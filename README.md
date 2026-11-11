@@ -80,6 +80,10 @@ MySQL Server đang cài trên máy có thể dùng trực tiếp. Docker Desktop
    ```
 
    File `application.properties` bị Git ignore; không commit mật khẩu hay JWT secret. File `.env` ở thư mục gốc chỉ dành cho Docker Compose, Maven không tự đọc file đó.
+   Để dùng ảnh đại diện khi chạy backend riêng, đặt `FILE_STORAGE_ENDPOINT`,
+   `FILE_STORAGE_PUBLIC_ENDPOINT`, `FILE_STORAGE_ACCESS_KEY` và
+   `FILE_STORAGE_SECRET_KEY` theo MinIO local; bucket mặc định là `lms-files`.
+   Không dùng placeholder trong cấu hình mẫu làm mật khẩu thật.
 
 3. Chạy backend và frontend trong hai cửa sổ PowerShell:
 
@@ -95,30 +99,49 @@ MySQL Server đang cài trên máy có thể dùng trực tiếp. Docker Desktop
 
    Mở `http://localhost:5173`. Vite chuyển tiếp `/api` tới backend tại `http://localhost:8080`; Flyway tự tạo các bảng cần thiết khi backend khởi động.
 
-4. Để mở màn quản trị lần đầu, hãy đăng ký tài khoản qua giao diện, sau đó dùng MySQL Workbench để cấp quyền `ADMIN` cho đúng email trong môi trường local:
+4. Để tạo admin local, đặt `LMS_BOOTSTRAP_ADMIN_EMAIL` và `LMS_BOOTSTRAP_ADMIN_PASSWORD` trong môi trường PowerShell trước khi chạy backend. Bootstrap chỉ chạy với profile `dev`; không dùng thông tin đăng nhập mặc định và không đưa mật khẩu vào Git.
 
-   ```sql
-   UPDATE users SET role = 'ADMIN' WHERE email = 'email-cua-ban@example.com';
+5. Để bật khôi phục mật khẩu, cấu hình các biến môi trường SMTP relay trước khi chạy backend:
+
+   ```powershell
+   $env:SMTP_ENABLED = "true"
+   $env:SPRING_MAIL_HOST = "smtp.example.com"
+   $env:SPRING_MAIL_PORT = "587"
+   $env:SPRING_MAIL_USERNAME = "your-relay-username"
+   $env:SPRING_MAIL_PASSWORD = "your-relay-password"
+   $env:SPRING_MAIL_PROPERTIES_MAIL_SMTP_AUTH = "true"
+   $env:SPRING_MAIL_PROPERTIES_MAIL_SMTP_STARTTLS_ENABLE = "true"
+   $env:SPRING_MAIL_PROPERTIES_MAIL_SMTP_STARTTLS_REQUIRED = "true"
+   $env:SMTP_FROM = "LMS Platform <no-reply@example.com>"
+   $env:PASSWORD_RESET_URL = "http://localhost:5173/"
    ```
 
-   Đăng xuất rồi đăng nhập lại để nhận quyền mới. Đây là thao tác bootstrap local qua DB; hệ thống không cung cấp endpoint công khai tự cấp quyền quản trị.
+   Thay các giá trị ví dụ bằng thông tin relay do nhà cung cấp SMTP cấp; không gửi credentials qua chat hoặc commit vào repository. Khi chạy bằng Maven, đặt các biến `SMTP_*` và `SPRING_MAIL_*` như trên trong PowerShell vì Maven không tự đọc `.env` ở thư mục gốc. Khi chạy Docker Compose, đặt cùng các biến `SMTP_*` trong `.env`; Compose chuyển chúng thành cấu hình Spring. SMTP được tắt mặc định.
 
 ### Chạy bằng Docker Compose (tùy chọn)
 
-Nếu chọn Docker, tạo `.env` từ `.env.example`, điền cấu hình theo mẫu rồi chạy `docker compose up --build`. MySQL trong Compose được publish ra host port `3307` để không xung đột với MySQL Server local trên `3306`. Frontend dùng `/api` qua Nginx tới backend.
+Nếu chọn Docker, tạo `.env` từ `.env.example`, điền các mật khẩu riêng (bao gồm
+`MINIO_ROOT_PASSWORD`) rồi chạy `docker compose up --build`. Backend tự tạo bucket
+MinIO khi cần; Nginx proxy URL đã ký qua cùng origin `/lms-files/`, không yêu cầu
+CORS từ trình duyệt. `FILE_STORAGE_PUBLIC_ENDPOINT` mặc định là `http://localhost`.
+Có thể đặt `LMS_BOOTSTRAP_ADMIN_EMAIL`
+và `LMS_BOOTSTRAP_ADMIN_PASSWORD` để tạo admin local trong profile `dev`; các
+credentials phải giữ trong `.env` đã được Git ignore. MySQL trong Compose được
+publish ra host port `3307` để không xung đột với MySQL Server local trên `3306`.
+Frontend gọi `/api/v1` cùng domain qua Nginx tới backend.
 
-Auth API:
+Auth API (prefix `/api/v1`):
 
-* `POST /api/auth/register` tạo tài khoản `STUDENT` và đăng nhập ngay.
-* `POST /api/auth/login` đăng nhập bằng email và mật khẩu.
-* `POST /api/auth/refresh` xoay vòng refresh token trong cookie HttpOnly.
-* `POST /api/auth/logout` thu hồi refresh token hiện tại.
-* `GET /api/auth/me` trả về hồ sơ của access token hiện tại.
-* `GET/PATCH /api/users/me` xem và cập nhật hồ sơ của chính mình.
-* `GET /api/users` tìm kiếm, lọc và phân trang danh sách người dùng (chỉ `ADMIN`).
-* `PATCH /api/users/{id}` cập nhật vai trò/trạng thái tài khoản (chỉ `ADMIN`).
+* `POST /auth/register` tạo tài khoản `STUDENT`; đăng nhập là bước riêng.
+* `POST /auth/login`, `/auth/refresh` và `/auth/logout` quản lý phiên đăng nhập; refresh token nằm trong cookie HttpOnly.
+* `POST /auth/forgot-password` yêu cầu gửi email khôi phục; phản hồi không tiết lộ email có tài khoản hay không.
+* `POST /auth/reset-password` dùng token một lần, hết hạn sau 30 phút.
+* `POST /me/password` đổi mật khẩu khi đã đăng nhập; mật khẩu mới tối thiểu 8 ký tự và các refresh session hiện có sẽ bị thu hồi.
+* `GET/PATCH /me` xem và cập nhật hồ sơ của chính mình; `avatarResourceId` có thể được gỡ bằng `null`.
+* `USER_AVATAR` được tải lên qua các API tài nguyên hiện có; ảnh JPEG, PNG hoặc WebP tối đa 5 MiB. Hồ sơ trả về ID tài nguyên, còn URL xem ảnh có thời hạn ngắn.
+* `/admin/users` và `/admin/audit-logs` dành cho `ADMIN`.
 
-Access token có thời hạn ngắn và chỉ được giữ trong bộ nhớ frontend. Refresh token có thời hạn dài hơn, được lưu dạng hash ở database và gửi qua cookie HttpOnly, SameSite=Strict. Khi triển khai HTTPS, đặt `REFRESH_COOKIE_SECURE=true` và cấu hình `CORS_ALLOWED_ORIGINS` thành origin thực tế của frontend.
+Access token có thời hạn ngắn và chỉ được giữ trong bộ nhớ frontend. Refresh token có thời hạn dài hơn, được lưu dạng hash ở database và gửi qua cookie HttpOnly, SameSite=Strict. Khi triển khai HTTPS, đặt `REFRESH_COOKIE_SECURE=true` và cấu hình `CORS_ALLOWED_ORIGINS` thành origin thực tế của frontend. SMTP relay được cấu hình qua `.env` khi dùng Docker Compose; SMTP tắt mặc định cho đến khi `SMTP_ENABLED=true`.
 
 
 ## Yêu cầu môi trường
