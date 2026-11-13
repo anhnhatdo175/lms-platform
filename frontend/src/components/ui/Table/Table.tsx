@@ -29,7 +29,7 @@ export interface TableProps<T> {
   className?: string;
 }
 
-export function Table<T extends Record<string, unknown>>({
+export function Table<T extends Record<string, unknown> & { id: string | number }>({
   columns,
   data,
   isLoading = false,
@@ -75,7 +75,7 @@ export function Table<T extends Record<string, unknown>>({
             ) : (
               data.map((row, rowIndex) => (
                 <tr
-                  key={(row.id as string | number) ?? rowIndex}
+                  key={row.id}
                   className={[
                     styles.tr,
                     onRowClick ? styles['tr--clickable'] : '',

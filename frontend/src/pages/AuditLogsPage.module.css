@@ -1,0 +1,277 @@
+.auditPage {
+  display: grid;
+  width: 100%;
+  gap: 24px;
+  color: #183b37;
+}
+
+.header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+.eyebrow {
+  margin-bottom: 8px;
+  color: #0d8178;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.13em;
+}
+
+.header h1 {
+  font-family: var(--font-body);
+  font-size: clamp(26px, 3vw, 32px);
+  font-weight: 650;
+  letter-spacing: -0.045em;
+}
+
+.header p:not(.eyebrow) {
+  margin-top: 8px;
+  color: #637572;
+  font-size: 14px;
+}
+
+.accessNote {
+  display: inline-flex;
+  min-height: 36px;
+  align-items: center;
+  padding: 0 12px;
+  border: 1px solid #dce8e5;
+  border-radius: 999px;
+  background: #fff;
+  color: #536a65;
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.filterCard,
+.logCard {
+  overflow: hidden;
+  border: 1px solid #e0e9e6;
+  border-radius: 10px;
+  background: #fff;
+}
+
+.filterCard {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  align-items: end;
+  gap: 14px;
+  padding: 18px;
+}
+
+.filterCard label {
+  display: grid;
+  min-width: 0;
+  gap: 7px;
+}
+
+.filterCard label span {
+  color: #425b55;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.filterCard input {
+  width: 100%;
+  min-width: 0;
+  min-height: 44px;
+  padding: 0 11px;
+  border: 1px solid #dce6e2;
+  border-radius: 7px;
+  outline: none;
+  background: #fff;
+  color: #3a514c;
+  font-size: 12px;
+}
+
+.filterCard input:focus-visible {
+  border-color: #0d9488;
+  box-shadow: 0 0 0 3px rgb(13 148 136 / 12%);
+}
+
+.filterCard button {
+  min-height: 44px;
+  padding: 0 15px;
+  border: 1px solid #0d8178;
+  border-radius: 7px;
+  background: #0d8178;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.filterCard button:hover:not(:disabled) {
+  border-color: #096b64;
+  background: #096b64;
+}
+
+.filterCard button:disabled {
+  cursor: wait;
+  opacity: 0.7;
+}
+
+.error {
+  padding: 12px 14px;
+  border: 1px solid #f1c8c4;
+  border-radius: 7px;
+  background: #fff6f5;
+  color: #922e27;
+  font-size: 12px;
+}
+
+.logHeading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 20px 22px;
+  border-bottom: 1px solid #edf1ef;
+}
+
+.logHeading h2 {
+  font-family: var(--font-body);
+  font-size: 15px;
+  font-weight: 650;
+}
+
+.logHeading p {
+  margin-top: 5px;
+  color: #758580;
+  font-size: 12px;
+}
+
+.tableWrap {
+  overflow-x: auto;
+  scrollbar-color: #b7c8c2 transparent;
+}
+
+.tableWrap table {
+  width: 100%;
+  min-width: 980px;
+  border-collapse: collapse;
+  text-align: left;
+}
+
+.tableWrap th {
+  height: 42px;
+  padding: 0 14px;
+  background: #f8faf9;
+  color: #75827f;
+  font-size: 10px;
+  font-weight: 650;
+  white-space: nowrap;
+}
+
+.tableWrap td {
+  max-width: 240px;
+  padding: 12px 14px;
+  border-top: 1px solid #edf1ef;
+  color: #435b56;
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
+.tableWrap td strong {
+  color: #233f3a;
+  font-weight: 600;
+}
+
+.dateCell {
+  min-width: 150px;
+  white-space: nowrap;
+}
+
+.secondary {
+  display: block;
+  margin-top: 4px;
+  color: #75837f;
+  font-size: 10px;
+}
+
+.action {
+  display: inline-block;
+  padding: 5px 7px;
+  border-radius: 5px;
+  background: #f0f5f3;
+  color: #3f5b54;
+  font-size: 10px;
+  font-weight: 650;
+  overflow-wrap: anywhere;
+}
+
+.changeDetails summary {
+  color: #0d8178;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.changeDetails pre {
+  max-width: 280px;
+  max-height: 180px;
+  overflow: auto;
+  margin-top: 8px;
+  padding: 8px;
+  border-radius: 6px;
+  background: #f6f8f7;
+  color: #435b56;
+  font-size: 10px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.message {
+  height: 120px;
+  color: #6c7d78 !important;
+  text-align: center;
+}
+
+.pagination {
+  display: flex;
+  min-height: 58px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 0 22px;
+  border-top: 1px solid #edf1ef;
+  color: #6a7b76;
+  font-size: 11px;
+}
+
+.pagination > div {
+  display: flex;
+  gap: 7px;
+}
+
+.pagination button {
+  min-width: 70px;
+  min-height: 44px;
+  padding: 0 10px;
+  border: 1px solid #d9e5e1;
+  border-radius: 6px;
+  background: #fff;
+  color: #3f5b54;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.pagination button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+@media (max-width: 760px) {
+  .auditPage { gap: 18px; }
+  .filterCard { grid-template-columns: repeat(2, minmax(0, 1fr)); padding: 14px; }
+  .header { align-items: flex-start; }
+  .logHeading { padding: 17px 16px; }
+  .pagination { padding: 0 16px; }
+}
+
+@media (max-width: 440px) {
+  .filterCard { grid-template-columns: 1fr; }
+  .header { flex-direction: column; }
+}

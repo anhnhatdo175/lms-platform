@@ -1,7 +1,7 @@
 # LMS Platform — Agent Guide
 
 **Project:** Graduation thesis — LMS with AI Adaptive Profile-Based RAG  
-**Stack:** Java 21 + Spring Boot 4 · React 19 + Vite + TypeScript 6 · MySQL 8 · Docker Compose  
+**Stack:** Java 25 + Spring Boot 4 · React 19 + Vite + TypeScript 6 · MySQL 8 · Docker Compose  
 **Team:** 2 developers, 3 months, Modular Monolith
 
 ## Read source-of-truth docs before coding
@@ -33,4 +33,3 @@ Only things an agent commonly gets wrong and **cannot infer** from code/docs:
 cd frontend; npm run lint   # must pass with 0 errors
 cd frontend; npm run build  # must succeed
 ```
-
