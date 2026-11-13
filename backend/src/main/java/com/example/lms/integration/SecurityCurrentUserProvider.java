@@ -11,10 +11,11 @@ import com.example.lms.contract.identity.CurrentUser;
 import com.example.lms.contract.identity.CurrentUserProvider;
 import com.example.lms.shared.exception.BusinessException;
 import com.example.lms.shared.exception.ErrorCode;
+import com.example.lms.user.UserRole;
 
 /**
- * Người dùng hiện tại lấy từ {@link UserPrincipal} mà {@code JwtAuthenticationFilter} của A đặt vào
- * SecurityContext. A lưu một role cho mỗi User, nên tập role ở đây có đúng một phần tử.
+ * Người dùng hiện tại lấy từ {@link UserPrincipal} mà {@code JwtAuthenticationFilter} đặt vào
+ * SecurityContext, bao gồm toàn bộ role đã gán cho tài khoản.
  */
 @Component
 public class SecurityCurrentUserProvider implements CurrentUserProvider {
@@ -23,7 +24,10 @@ public class SecurityCurrentUserProvider implements CurrentUserProvider {
     public CurrentUser current() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         if (authentication != null && authentication.getPrincipal() instanceof UserPrincipal principal) {
-            return new CurrentUser(principal.id(), Set.of(principal.role().name()));
+            Set<String> roles = principal.roles().stream()
+                    .map(UserRole::name)
+                    .collect(java.util.stream.Collectors.toUnmodifiableSet());
+            return new CurrentUser(principal.id(), roles);
         }
         throw new BusinessException(ErrorCode.UNAUTHENTICATED, "Authentication required");
     }

@@ -13,6 +13,8 @@ import com.example.lms.common.ErrorResponse.ErrorDetail;
 import com.example.lms.shared.exception.BusinessException;
 import com.example.lms.shared.exception.ErrorCode;
 
+import java.util.UUID;
+
 /**
  * Lỗi nghiệp vụ của B theo đúng định dạng {@link ErrorResponse} của A. Chỉ áp cho controller của B, nên
  * không đổi cách {@code ApiExceptionHandler} của A trả lỗi cho phần của A.
@@ -25,13 +27,16 @@ public class BusinessExceptionHandler {
     @ExceptionHandler(BusinessException.class)
     public ResponseEntity<ErrorResponse> handleBusiness(BusinessException exception) {
         return ResponseEntity.status(exception.httpStatus())
-                .body(new ErrorResponse(new ErrorDetail(exception.code().name(), exception.getMessage())));
+                .body(new ErrorResponse(new ErrorDetail(
+                        exception.code().name(), exception.getMessage(), UUID.randomUUID().toString())));
     }
 
     /** Thiếu {@code Idempotency-Key} khi checkout. */
     @ExceptionHandler(MissingRequestHeaderException.class)
     public ResponseEntity<ErrorResponse> handleMissingHeader(MissingRequestHeaderException exception) {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new ErrorResponse(new ErrorDetail(
-                ErrorCode.VALIDATION_ERROR.name(), "Missing header " + exception.getHeaderName())));
+                ErrorCode.VALIDATION_ERROR.name(),
+                "Missing header " + exception.getHeaderName(),
+                UUID.randomUUID().toString())));
     }
 }

@@ -214,6 +214,41 @@ public class FileStorageService {
                         HttpStatus.UNPROCESSABLE_ENTITY));
     }
 
+    @Transactional(readOnly = true)
+    public void validateCourseThumbnail(Long resourceId) {
+        if (resourceId == null) return;
+        fileResourceRepository.findById(resourceId)
+                .filter(file -> file.getPurpose() == FilePurpose.COURSE_THUMBNAIL)
+                .filter(file -> file.getStatus() == FileStatus.READY)
+                .orElseThrow(() -> new AuthException(
+                        "INVALID_THUMBNAIL_RESOURCE",
+                        "Ảnh khóa học phải là tài nguyên COURSE_THUMBNAIL đã tải lên thành công.",
+                        HttpStatus.UNPROCESSABLE_ENTITY));
+    }
+
+    @Transactional(readOnly = true)
+    public void validateLessonResource(Long resourceId, Long uploaderId) {
+        if (resourceId == null) return;
+        fileResourceRepository.findById(resourceId)
+                .filter(file -> file.getPurpose() == FilePurpose.LESSON_RESOURCE)
+                .filter(file -> file.getStatus() == FileStatus.READY)
+                .filter(file -> file.getUploadedBy().getId().equals(uploaderId))
+                .orElseThrow(() -> new AuthException(
+                        "INVALID_LESSON_RESOURCE",
+                        "Tài nguyên bài học phải là tệp LESSON_RESOURCE đã tải lên thành công bởi bạn.",
+                        HttpStatus.UNPROCESSABLE_ENTITY));
+    }
+
+    @Transactional(readOnly = true)
+    public String courseThumbnailUrl(Long resourceId) {
+        if (resourceId == null) return null;
+        return fileResourceRepository.findById(resourceId)
+                .filter(file -> file.getPurpose() == FilePurpose.COURSE_THUMBNAIL)
+                .filter(file -> file.getStatus() == FileStatus.READY)
+                .map(this::downloadUrl)
+                .orElse(null);
+    }
+
     private void validateUpload(UserPrincipal principal, CreateUploadUrlRequest request) {
         if (request.purpose() == FilePurpose.USER_AVATAR) {
             if (request.sizeBytes() > MAX_AVATAR_BYTES) {

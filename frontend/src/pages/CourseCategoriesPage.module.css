@@ -1,0 +1,242 @@
+.page {
+  display: grid;
+  gap: 22px;
+  color: #183b37;
+}
+
+.heading h1 {
+  color: #193d38;
+  font-family: var(--font-body);
+  font-size: clamp(26px, 3vw, 34px);
+  font-weight: 700;
+  letter-spacing: -0.045em;
+}
+
+.heading > div > p:last-child {
+  margin-top: 8px;
+  color: #687a76;
+  font-size: 14px;
+}
+
+.eyebrow {
+  margin-bottom: 7px;
+  color: #0d8178;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.13em;
+}
+
+.layout {
+  display: grid;
+  grid-template-columns: minmax(270px, 0.75fr) minmax(0, 1.5fr);
+  align-items: start;
+  gap: 18px;
+}
+
+.card {
+  min-width: 0;
+  padding: 22px;
+  border: 1px solid #e0e9e6;
+  border-radius: 11px;
+  background: #fff;
+  box-shadow: 0 2px 6px rgb(26 63 56 / 3%);
+}
+
+.cardHeading {
+  margin-bottom: 18px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid #edf1ef;
+}
+
+.cardHeading h2 {
+  color: #1c3e38;
+  font-family: var(--font-body);
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.cardHeading h2 span {
+  margin-left: 5px;
+  color: #0d8178;
+  font-size: 13px;
+}
+
+.cardHeading p {
+  margin-top: 5px;
+  color: #758580;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.field {
+  display: grid;
+  gap: 7px;
+  margin-top: 15px;
+}
+
+.field > span {
+  color: #405953;
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.field input,
+.field textarea {
+  width: 100%;
+  min-height: 44px;
+  padding: 10px 12px;
+  border: 1px solid #d5e0dc;
+  border-radius: 7px;
+  outline: none;
+  background: #fff;
+  color: #243f3a;
+  font-size: 14px;
+}
+
+.field textarea {
+  min-height: 88px;
+  resize: vertical;
+}
+
+.field input:focus,
+.field textarea:focus {
+  border-color: #0d9488;
+  box-shadow: 0 0 0 3px rgb(13 148 136 / 13%);
+}
+
+.primaryButton,
+.secondaryButton {
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
+  justify-content: center;
+  padding: 0 14px;
+  border: 1px solid;
+  border-radius: 7px;
+  font-size: 12px;
+  font-weight: 650;
+  transition: background-color 150ms ease, border-color 150ms ease;
+}
+
+.primaryButton {
+  margin-top: 18px;
+  border-color: #0d8178;
+  background: #0d8178;
+  color: #fff;
+}
+
+.primaryButton:hover:not(:disabled) {
+  border-color: #096b64;
+  background: #096b64;
+}
+
+.secondaryButton {
+  border-color: #dce6e2;
+  background: #fff;
+  color: #49615b;
+}
+
+.secondaryButton:hover:not(:disabled) {
+  border-color: #bfd5ce;
+  background: #f4faf8;
+}
+
+.primaryButton:disabled,
+.secondaryButton:disabled {
+  cursor: wait;
+  opacity: 0.65;
+}
+
+.categoryList {
+  display: grid;
+}
+
+.categoryRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding-block: 14px;
+  border-bottom: 1px solid #edf1ef;
+}
+
+.categoryRow:last-child { border-bottom: 0; }
+
+.categoryInfo {
+  display: grid;
+  min-width: 0;
+  gap: 4px;
+}
+
+.categoryInfo strong {
+  overflow-wrap: anywhere;
+  color: #294740;
+  font-size: 14px;
+}
+
+.categoryInfo > span,
+.categoryInfo small {
+  overflow-wrap: anywhere;
+  color: #758580;
+  font-size: 12px;
+}
+
+.categoryActions {
+  display: grid;
+  flex: 0 0 auto;
+  justify-items: end;
+  gap: 8px;
+}
+
+.activeBadge,
+.inactiveBadge {
+  padding: 4px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.activeBadge { background: #e0f5e9; color: #18764a; }
+.inactiveBadge { background: #eef2f6; color: #53616d; }
+
+.emptyState {
+  padding: 20px 2px;
+  color: #758580;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.errorNotice,
+.successNotice {
+  padding: 13px 15px;
+  border: 1px solid;
+  border-radius: 8px;
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+.errorNotice {
+  border-color: #f0c4bd;
+  background: #fff3f1;
+  color: #963b31;
+}
+
+.successNotice {
+  border-color: #b7dfc9;
+  background: #effaf3;
+  color: #1b7045;
+}
+
+@media (max-width: 760px) {
+  .layout { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 480px) {
+  .categoryRow {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .categoryActions {
+    justify-items: start;
+  }
+}

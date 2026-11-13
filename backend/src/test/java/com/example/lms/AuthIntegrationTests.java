@@ -8,6 +8,8 @@ import com.example.lms.user.UserStatus;
 import com.example.lms.audit.AuditLogRepository;
 import com.example.lms.auth.PasswordResetToken;
 import com.example.lms.auth.PasswordResetTokenRepository;
+import com.example.lms.course.CourseCategory;
+import com.example.lms.course.CourseCategoryRepository;
 import com.example.lms.file.FilePurpose;
 import com.example.lms.file.FileResource;
 import com.example.lms.file.FileResourceRepository;
@@ -86,6 +88,9 @@ class AuthIntegrationTests {
 
     @Autowired
     private FileResourceRepository fileResourceRepository;
+
+    @Autowired
+    private CourseCategoryRepository courseCategoryRepository;
 
     @Autowired
     private PasswordEncoder passwordEncoder;
@@ -658,6 +663,117 @@ class AuthIntegrationTests {
                 .isTrue();
     }
 
+    @Test
+    void teachersCanAuthorCurriculumOnlyForAssignedCourses() throws Exception {
+        User teacher = createUserWithRole("teacher-course-" + UUID.randomUUID() + "@example.com", UserRole.TEACHER);
+        User otherTeacher = createUserWithRole(
+                "teacher-course-other-" + UUID.randomUUID() + "@example.com", UserRole.TEACHER);
+        String teacherToken = loginAccessToken(teacher.getEmail());
+        String otherTeacherToken = loginAccessToken(otherTeacher.getEmail());
+        CourseCategory category = courseCategoryRepository.saveAndFlush(new CourseCategory(
+                "General",
+                "general-" + UUID.randomUUID(),
+                null));
+
+        HttpResponse<String> courseResponse = post(
+                client,
+                "/api/v1/teacher/courses",
+                "{\"title\":\"Course\",\"slug\":\"course-" + UUID.randomUUID()
+                        + "\",\"categoryId\":" + category.getId()
+                        + ",\"originalPrice\":0,\"salePrice\":0}",
+                null,
+                teacherToken);
+        assertThat(courseResponse.statusCode()).as(courseResponse.body()).isEqualTo(201);
+        long courseId = jsonLong(courseResponse.body(), "\"id\":(\\d+)");
+
+        HttpResponse<String> sectionResponse = post(
+                client,
+                "/api/v1/teacher/courses/" + courseId + "/sections",
+                "{\"title\":\"  Introduction  \",\"description\":\"Basics\",\"releaseAfterDays\":7}",
+                null,
+                teacherToken);
+        assertThat(sectionResponse.statusCode()).as(sectionResponse.body()).isEqualTo(201);
+        assertThat(sectionResponse.body())
+                .contains("\"title\":\"Introduction\"")
+                .contains("\"position\":1")
+                .contains("\"releaseAfterDays\":7");
+        long sectionId = jsonLong(sectionResponse.body(), "\"id\":(\\d+)");
+        FileResource lessonResource = createAvatar(teacher, FilePurpose.LESSON_RESOURCE, true);
+        FileResource otherTeacherResource = createAvatar(otherTeacher, FilePurpose.LESSON_RESOURCE, true);
+
+        HttpResponse<String> rejectForeignResource = post(
+                client,
+                "/api/v1/teacher/sections/" + sectionId + "/lessons",
+                "{\"title\":\"Foreign file\",\"lessonType\":\"VIDEO\",\"videoResourceId\":"
+                        + otherTeacherResource.getId() + "}",
+                null,
+                teacherToken);
+        assertThat(rejectForeignResource.statusCode()).isEqualTo(422);
+
+        HttpResponse<String> lessonResponse = post(
+                client,
+                "/api/v1/teacher/sections/" + sectionId + "/lessons",
+                "{\"title\":\"Lesson 1\",\"lessonType\":\"VIDEO\",\"durationSeconds\":120,"
+                        + "\"completionThreshold\":80,\"videoResourceId\":" + lessonResource.getId() + "}",
+                null,
+                teacherToken);
+        assertThat(lessonResponse.statusCode()).as(lessonResponse.body()).isEqualTo(201);
+        assertThat(lessonResponse.body())
+                .contains("\"position\":1")
+                .contains("\"completionMethod\":\"MANUAL\"")
+                .contains("\"completionThreshold\":80");
+        long lessonId = jsonLong(lessonResponse.body(), "\"id\":(\\d+)");
+
+        HttpResponse<String> updateSection = patch(
+                "/api/v1/teacher/sections/" + sectionId,
+                teacherToken,
+                "{\"description\":null,\"releaseAfterDays\":3}");
+        assertThat(updateSection.statusCode()).as(updateSection.body()).isEqualTo(200);
+        assertThat(updateSection.body())
+                .contains("\"description\":null")
+                .contains("\"releaseAfterDays\":3");
+
+        HttpResponse<String> updateLesson = patch(
+                "/api/v1/teacher/lessons/" + lessonId,
+                teacherToken,
+                "{\"preview\":true,\"completionThreshold\":95}");
+        assertThat(updateLesson.statusCode()).as(updateLesson.body()).isEqualTo(200);
+        assertThat(updateLesson.body())
+                .contains("\"preview\":true")
+                .contains("\"completionThreshold\":95");
+
+        HttpResponse<String> wrongTeacher = patch(
+                "/api/v1/teacher/lessons/" + lessonId,
+                otherTeacherToken,
+                "{\"preview\":false}");
+        assertThat(wrongTeacher.statusCode()).isEqualTo(404);
+
+        HttpResponse<String> deleteNonEmptySection = delete(
+                "/api/v1/teacher/sections/" + sectionId, teacherToken);
+        assertThat(deleteNonEmptySection.statusCode()).isEqualTo(409);
+
+        HttpResponse<String> publishLesson = patch(
+                "/api/v1/teacher/lessons/" + lessonId,
+                teacherToken,
+                "{\"published\":true}");
+        assertThat(publishLesson.statusCode()).isEqualTo(200);
+        HttpResponse<String> deletePublishedLesson = delete(
+                "/api/v1/teacher/lessons/" + lessonId, teacherToken);
+        assertThat(deletePublishedLesson.statusCode()).isEqualTo(409);
+
+        HttpResponse<String> unpublishLesson = patch(
+                "/api/v1/teacher/lessons/" + lessonId,
+                teacherToken,
+                "{\"published\":false}");
+        assertThat(unpublishLesson.statusCode()).isEqualTo(200);
+        HttpResponse<String> deleteLesson = delete(
+                "/api/v1/teacher/lessons/" + lessonId, teacherToken);
+        assertThat(deleteLesson.statusCode()).isEqualTo(204);
+        HttpResponse<String> deleteSection = delete(
+                "/api/v1/teacher/sections/" + sectionId, teacherToken);
+        assertThat(deleteSection.statusCode()).isEqualTo(204);
+    }
+
     private HttpResponse<String> get(String path, String accessToken) throws Exception {
         HttpRequest request = HttpRequest.newBuilder(baseUri.resolve(path))
                 .header("Authorization", "Bearer " + accessToken)
@@ -702,6 +818,12 @@ class AuthIntegrationTests {
                 null);
         assertThat(login.statusCode()).as(login.body()).isEqualTo(200);
         return accessToken(login.body());
+    }
+
+    private static long jsonLong(String json, String pattern) {
+        Matcher matcher = Pattern.compile(pattern).matcher(json);
+        assertThat(matcher.find()).as(json).isTrue();
+        return Long.parseLong(matcher.group(1));
     }
 
     private HttpResponse<String> delete(String path, String accessToken) throws Exception {

@@ -21,6 +21,6 @@ public class PendingAccessPolicy implements AccessPolicy {
 
     @Override
     public boolean canManageCourse(long userId, long courseId) {
-        return users.findById(userId).map(u -> u.getRole() == UserRole.ADMIN).orElse(false);
+        return users.findById(userId).map(u -> u.hasRole(UserRole.ADMIN)).orElse(false);
     }
 }

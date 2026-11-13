@@ -20,6 +20,8 @@ import {
 import { Avatar } from '../components/ui/Avatar';
 import { UsersPage } from './UsersPage';
 import { AuditLogsPage } from './AuditLogsPage';
+import { CourseAuthoringPage } from './CourseAuthoringPage';
+import { CourseCategoriesPage } from './CourseCategoriesPage';
 import areaStyles from './UserArea.module.css';
 import styles from './LoginPage.module.css';
 
@@ -536,7 +538,9 @@ function AuthenticatedArea({
   onUserUpdate: (user: AuthUser) => void;
   user: AuthUser;
 }) {
-  const [activeSection, setActiveSection] = useState<'profile' | 'security' | 'users' | 'audit'>('profile');
+  const [activeSection, setActiveSection] = useState<
+    'profile' | 'security' | 'users' | 'audit' | 'courses' | 'course-categories'
+  >('profile');
   const [fullName, setFullName] = useState(user.displayName);
   const [isSaving, setIsSaving] = useState(false);
   const [profileError, setProfileError] = useState('');
@@ -755,8 +759,26 @@ function AuthenticatedArea({
         >
           Bảo mật
         </button>
+        {user.roles.includes('TEACHER') && (
+          <button
+            aria-current={activeSection === 'courses' ? 'page' : undefined}
+            className={activeSection === 'courses' ? areaStyles.activeNav : ''}
+            onClick={() => setActiveSection('courses')}
+            type="button"
+          >
+            Soạn khóa học
+          </button>
+        )}
         {user.roles.includes('ADMIN') && (
           <>
+            <button
+              aria-current={activeSection === 'course-categories' ? 'page' : undefined}
+              className={activeSection === 'course-categories' ? areaStyles.activeNav : ''}
+              onClick={() => setActiveSection('course-categories')}
+              type="button"
+            >
+              Danh mục khóa học
+            </button>
             <button
               aria-current={activeSection === 'users' ? 'page' : undefined}
               className={activeSection === 'users' ? areaStyles.activeNav : ''}
@@ -781,7 +803,11 @@ function AuthenticatedArea({
         {notice && <div className={areaStyles.errorNotice} role="alert">{notice}</div>}
         {profileNotice && <div className={areaStyles.successNotice} role="status">{profileNotice}</div>}
 
-        {activeSection === 'users' && user.roles.includes('ADMIN') ? (
+        {activeSection === 'course-categories' && user.roles.includes('ADMIN') ? (
+          <CourseCategoriesPage accessToken={accessToken} />
+        ) : activeSection === 'courses' && user.roles.includes('TEACHER') ? (
+          <CourseAuthoringPage accessToken={accessToken} />
+        ) : activeSection === 'users' && user.roles.includes('ADMIN') ? (
           <UsersPage accessToken={accessToken} currentUserId={user.id} />
         ) : activeSection === 'audit' && user.roles.includes('ADMIN') ? (
           <AuditLogsPage accessToken={accessToken} />
