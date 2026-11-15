@@ -81,4 +81,12 @@ public interface AiKnowledgeDocumentRepository extends JpaRepository<AiKnowledge
             WHERE d.id = :id AND d.indexStatus = com.example.lms.ai.IndexStatus.PROCESSING AND d.attemptCount = :attempt
             """)
     int markRequeued(long id, int attempt, Instant next, String message, Instant now);
+
+    /** Lưu văn bản đã trích xuất để reindex không phải đọc lại tệp; fenced theo attempt. */
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query("""
+            UPDATE AiKnowledgeDocument d SET d.sourceText = :text, d.updatedAt = :now
+            WHERE d.id = :id AND d.indexStatus = com.example.lms.ai.IndexStatus.PROCESSING AND d.attemptCount = :attempt
+            """)
+    int storeExtractedText(long id, int attempt, String text, Instant now);
 }

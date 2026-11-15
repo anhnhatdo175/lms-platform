@@ -20,7 +20,8 @@ import com.example.lms.ai.session.SessionStateMachine;
  * Lập chỉ mục tài liệu: PENDING → PROCESSING → READY|FAILED, lease 5 phút, fencing theo {@code attempt_count}, tự retry
  * tối đa 3 lần với backoff (Spec 20A.14). Gọi AI service nằm NGOÀI transaction DB để không giữ kết nối trong lúc chờ.
  * Tài liệu đang xử lý, FAILED hoặc đã gỡ không có trong danh sách được phép truy xuất (chỉ READY, chưa xóa).
- * <p>Phạm vi: văn bản đã có trong {@code source_text}. Trích xuất text từ PDF/DOCX là bước tách riêng.
+ * <p>Nguồn văn bản: {@code source_text} nếu có; nếu không, đọc tệp LMS_FILE rồi nhờ AI service trích xuất
+ * (txt, md, pdf, docx) và lưu lại vào {@code source_text}. Tệp không đọc được là lỗi nghiệp vụ (FAILED, không retry).
  */
 @Service
 public class DocumentIngestionService {
@@ -30,11 +31,14 @@ public class DocumentIngestionService {
 
     private final AiKnowledgeDocumentRepository documents;
     private final AiServiceClient client;
+    private final DocumentFileReader files;
     private final Clock clock;
 
-    public DocumentIngestionService(AiKnowledgeDocumentRepository documents, AiServiceClient client, Clock clock) {
+    public DocumentIngestionService(AiKnowledgeDocumentRepository documents, AiServiceClient client,
+            DocumentFileReader files, Clock clock) {
         this.documents = documents;
         this.client = client;
+        this.files = files;
         this.clock = clock;
     }
 
@@ -42,19 +46,24 @@ public class DocumentIngestionService {
     public List<Claimed> claim() {
         Instant now = clock.instant();
         return documents.findRunnable(now, PageRequest.of(0, BATCH)).stream()
-                .filter(d -> d.getSourceText() != null && !d.getSourceText().isBlank()
-                        && d.getCourseId() != null)
+                .filter(d -> d.getCourseId() != null && (hasText(d.getSourceText()) || d.getFileResourceId() != null))
                 .filter(d -> documents.claim(d.getId(), d.getAttemptCount(), now.plus(SessionStateMachine.LEASE),
                         now) == 1)
                 .map(d -> new Claimed(d.getId(), d.getAttemptCount() + 1, d.getCourseId(), d.getLessonId(),
-                        d.getTitle(), d.getSourceText()))
+                        d.getTitle(), d.getSourceText(), d.getFileResourceId()))
                 .toList();
     }
 
     /** Gọi từ worker (qua proxy) sau {@link #claim()}; không mở transaction quanh lời gọi HTTP. */
     public void process(Claimed c) {
         try {
-            client.ingest(new AiServiceClient.IngestCall(c.id(), c.courseId(), c.lessonId(), c.title(), c.text()));
+            String text = c.text();
+            if (!hasText(text)) {
+                DocumentFileReader.FileContent file = files.read(c.fileResourceId());
+                text = client.extractText(file.name(), file.content());
+                documents.storeExtractedText(c.id(), c.attempt(), text, clock.instant());
+            }
+            client.ingest(new AiServiceClient.IngestCall(c.id(), c.courseId(), c.lessonId(), c.title(), text));
         } catch (AiServiceClient.AiServiceException e) {
             handleFailure(c, e);
             return;
@@ -106,6 +115,11 @@ public class DocumentIngestionService {
         }
     }
 
-    public record Claimed(long id, int attempt, long courseId, Long lessonId, String title, String text) {
+    private static boolean hasText(String s) {
+        return s != null && !s.isBlank();
+    }
+
+    public record Claimed(long id, int attempt, long courseId, Long lessonId, String title, String text,
+            Long fileResourceId) {
     }
 }

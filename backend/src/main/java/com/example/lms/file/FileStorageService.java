@@ -327,6 +327,28 @@ public class FileStorageService {
         return "application/octet-stream";
     }
 
+    /** Nội dung tệp đã tải lên xong, cho dịch vụ nội bộ (ingestion AI); không kiểm quyền người dùng. */
+    @Transactional(readOnly = true)
+    public StoredFile readContent(Long resourceId, long maxBytes) {
+        FileResource resource = fileResourceRepository.findById(resourceId)
+                .orElseThrow(() -> new AuthException("FILE_NOT_FOUND", "Không tìm thấy tệp.", HttpStatus.NOT_FOUND));
+        if (resource.getStatus() != FileStatus.READY) {
+            throw new AuthException("FILE_NOT_READY", "Tệp chưa sẵn sàng.", HttpStatus.CONFLICT);
+        }
+        if (resource.getFileSize() > maxBytes) {
+            throw new AuthException("FILE_TOO_LARGE", "Tệp quá lớn.", HttpStatus.PAYLOAD_TOO_LARGE);
+        }
+        try (InputStream in = storageClient.getObject(
+                GetObjectArgs.builder().bucket(bucket).object(resource.getObjectKey()).build())) {
+            return new StoredFile(resource.getOriginalName(), resource.getMimeType(), in.readNBytes((int) maxBytes));
+        } catch (Exception e) {
+            throw new IllegalStateException("Cannot read stored file " + resourceId, e);
+        }
+    }
+
+    public record StoredFile(String name, String mimeType, byte[] content) {
+    }
+
     private String downloadUrl(FileResource resource) {
         return presignedUrl(publicUrlClient, resource, Method.GET, DOWNLOAD_URL_TTL, Map.of());
     }

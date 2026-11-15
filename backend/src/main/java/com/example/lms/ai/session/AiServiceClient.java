@@ -17,6 +17,11 @@ public interface AiServiceClient {
         throw new AiServiceException(AiServiceException.Kind.UNAVAILABLE, "ingest is not supported by this client");
     }
 
+    /** Trích văn bản từ tệp (txt, md, pdf, docx). INVALID_OUTPUT nếu tệp không đọc được hoặc không có chữ. */
+    default String extractText(String filename, byte[] content) {
+        throw new AiServiceException(AiServiceException.Kind.UNAVAILABLE, "extract is not supported by this client");
+    }
+
     /** Xóa mọi vector của tài liệu (idempotent). */
     default void deleteDocument(long documentId) {
         throw new AiServiceException(AiServiceException.Kind.UNAVAILABLE, "delete is not supported by this client");

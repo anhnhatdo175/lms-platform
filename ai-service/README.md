@@ -21,6 +21,7 @@ Với Docker: `docker compose up qdrant ai-service` ở gốc repo (mặc địn
 |---|---|
 | `GET /health` | kiểm tra sống |
 | `POST /v1/ingest` | nhận text đã trích xuất + `document_id`, `course_id`; chunk, embed, ghi Qdrant (ingest lại sẽ thay chunk cũ) |
+| `POST /v1/extract?filename=...` | body là byte của tệp (txt, md, pdf, docx, tối đa 20 MiB); trả `{text, char_count}`; 422 `EXTRACT_FAILED` nếu tệp hỏng hoặc không có chữ (PDF scan cần OCR, chưa hỗ trợ) |
 | `DELETE /v1/documents/{id}` | xoá chunk của tài liệu |
 | `POST /v1/retrieve` | tìm chunk **trong** `allowed_course_ids` (rỗng thì không trả gì) |
 | `POST /v1/generate` | retrieve + sinh nhiệm vụ + validate; lỗi model trả 502/422 để Spring đánh dấu phiên FAILED |
