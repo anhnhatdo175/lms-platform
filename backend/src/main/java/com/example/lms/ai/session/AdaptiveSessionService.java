@@ -234,6 +234,12 @@ public class AdaptiveSessionService {
                 s.getManualRetryCount(), s.getNextRetryAt());
     }
 
+    /** Dạng Student thấy của một task (không đáp án), dùng lại cho lịch sử nộp bài. */
+    public TaskView publicTask(AdaptiveGeneratedTask t, AdaptiveTaskSession session) {
+        return taskView(t, Boolean.TRUE.equals(JsonSupport.object(session.getConstraintsJson())
+                .get("socraticEnabled")));
+    }
+
     private TaskView taskView(AdaptiveGeneratedTask t, boolean socratic) {
         Map<String, Object> content = JsonSupport.object(t.getContentJson());
         List<Evidence> evidence = new ArrayList<>();

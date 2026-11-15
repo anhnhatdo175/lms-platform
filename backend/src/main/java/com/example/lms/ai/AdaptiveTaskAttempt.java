@@ -76,6 +76,17 @@ public class AdaptiveTaskAttempt {
     public AdaptiveTaskAttempt() {
     }
 
+    /** Lượt nộp mới; {@code (task, student)} và {@code (student, clientEventId)} bất biến và duy nhất. */
+    public static AdaptiveTaskAttempt create(long taskId, long studentId, String clientEventId, Instant now) {
+        AdaptiveTaskAttempt a = new AdaptiveTaskAttempt();
+        a.taskId = taskId;
+        a.studentId = studentId;
+        a.clientEventId = clientEventId;
+        a.submittedAt = now;
+        a.createdAt = now;
+        return a;
+    }
+
     public Long getId() {
         return id;
     }
