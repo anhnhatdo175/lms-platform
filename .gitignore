@@ -104,3 +104,13 @@ docker-compose.override.yml
 # Python
 __pycache__/
 *.py[cod]
+
+# --- Python / AI service & research (Person C) ---
+.venv/
+.venv*/
+.pytest_cache/
+*.pyc
+ai-service/lmsrag/artifacts/
+ai-service/lmsrag/data/raw/
+ai-service/lmsrag/.env
+research/benchmark/data/

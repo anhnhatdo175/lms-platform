@@ -1,0 +1,16 @@
+pandas
+numpy
+scipy
+scikit-learn
+faiss-cpu
+datasketch
+tiktoken
+groq
+matplotlib
+tqdm
+python-dotenv
+sentence-transformers
+transformers
+accelerate
+bitsandbytes
+sentencepiece

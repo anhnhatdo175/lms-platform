@@ -1,0 +1,807 @@
+{
+  "dataset": "ASSISTments Skill Builder",
+  "protocol": "per-learner chronological 70/15/15; prequential test scoring (prior test responses update state for later attempts)",
+  "counts": {
+    "users": 2219,
+    "rows": 245048,
+    "history": 174955,
+    "validation": 34958,
+    "test": 35135
+  },
+  "mapped_interaction_scope": {
+    "all_interactions": 283687,
+    "mapped_interactions_used": 245048,
+    "excluded_unmapped_interactions": 38639,
+    "mapped_share": 0.8637970721252648
+  },
+  "ema": {
+    "selected_alpha": 0.1,
+    "selection_metric": "validation log-loss",
+    "validation_log_loss_by_alpha": {
+      "0.05": 0.5871551401112823,
+      "0.1": 0.5795138082700326,
+      "0.15": 0.5811250801064467,
+      "0.2": 0.5888381492653726,
+      "0.3": 0.6186993829488291,
+      "0.4": 0.6668302629306794,
+      "0.5": 0.7338830177628619
+    }
+  },
+  "test_metrics": {
+    "Global mean": {
+      "AUC": 0.5,
+      "RMSE": 0.48450891349926734,
+      "MAE": 0.4581671498304773
+    },
+    "Skill mean (history)": {
+      "AUC": 0.6143137882653281,
+      "RMSE": 0.4728129540857793,
+      "MAE": 0.44367662729319385
+    },
+    "User mean (history)": {
+      "AUC": 0.6419754283306076,
+      "RMSE": 0.47070675464688694,
+      "MAE": 0.4155608158290255
+    },
+    "Last answer on skill": {
+      "AUC": 0.653041297331421,
+      "RMSE": 0.568828527680458,
+      "MAE": 0.33874601748438216
+    },
+    "EMA mastery": {
+      "AUC": 0.7183512302310617,
+      "RMSE": 0.4487007196653095,
+      "MAE": 0.40536788730266343
+    },
+    "Skill CF": {
+      "AUC": 0.6360156902804202,
+      "RMSE": 0.4780457000862264,
+      "MAE": 0.4108794260880979
+    }
+  },
+  "confidence_intervals_95": {
+    "metrics": {
+      "Global mean": {
+        "AUC": [
+          0.5,
+          0.5
+        ],
+        "RMSE": [
+          0.4807290488993125,
+          0.4880819134144855
+        ],
+        "MAE": [
+          0.4545186811821835,
+          0.4616422167798241
+        ]
+      },
+      "Skill mean (history)": {
+        "AUC": [
+          0.6027854057657314,
+          0.6248384819055816
+        ],
+        "RMSE": [
+          0.46958757855065536,
+          0.4759462986012828
+        ],
+        "MAE": [
+          0.44044697628934865,
+          0.4467975317537925
+        ]
+      },
+      "User mean (history)": {
+        "AUC": [
+          0.6285839879677099,
+          0.6559200981464078
+        ],
+        "RMSE": [
+          0.4658480374105055,
+          0.4749755285173711
+        ],
+        "MAE": [
+          0.4091453064080157,
+          0.42109107484125424
+        ]
+      },
+      "Last answer on skill": {
+        "AUC": [
+          0.6440327870673701,
+          0.6620394748299229
+        ],
+        "RMSE": [
+          0.5621312158275705,
+          0.5753565751700132
+        ],
+        "MAE": [
+          0.3312385366263771,
+          0.3460471447473288
+        ]
+      },
+      "EMA mastery": {
+        "AUC": [
+          0.7084887736129739,
+          0.7277478954343946
+        ],
+        "RMSE": [
+          0.445255158591476,
+          0.4517106936034565
+        ],
+        "MAE": [
+          0.40113393623481913,
+          0.4093099855916053
+        ]
+      },
+      "Skill CF": {
+        "AUC": [
+          0.6236176342952259,
+          0.6480535856467677
+        ],
+        "RMSE": [
+          0.47266897476549885,
+          0.48305379297485707
+        ],
+        "MAE": [
+          0.4052454817708586,
+          0.41628559442490654
+        ]
+      }
+    },
+    "paired_difference_vs_ema": {
+      "Global mean": {
+        "AUC_vs_EMA": [
+          -0.22774789543439453,
+          -0.20848877361297388
+        ],
+        "RMSE_vs_EMA": [
+          0.03170066551128331,
+          0.040148048863170825
+        ],
+        "MAE_vs_EMA": [
+          0.048050910350233525,
+          0.05770085198438401
+        ]
+      },
+      "Skill mean (history)": {
+        "AUC_vs_EMA": [
+          -0.11478839276998694,
+          -0.0937962771619137
+        ],
+        "RMSE_vs_EMA": [
+          0.020978178716197105,
+          0.02768514987195576
+        ],
+        "MAE_vs_EMA": [
+          0.03460691193910354,
+          0.0423563336011703
+        ]
+      },
+      "User mean (history)": {
+        "AUC_vs_EMA": [
+          -0.08860110816279822,
+          -0.06383163262681084
+        ],
+        "RMSE_vs_EMA": [
+          0.01802544251442629,
+          0.025696688700247085
+        ],
+        "MAE_vs_EMA": [
+          0.005090600160102382,
+          0.014955504848113154
+        ]
+      },
+      "Last answer on skill": {
+        "AUC_vs_EMA": [
+          -0.071372080765481,
+          -0.058515826709508424
+        ],
+        "RMSE_vs_EMA": [
+          0.11545522006678946,
+          0.12489530472353677
+        ],
+        "MAE_vs_EMA": [
+          -0.07177587948608055,
+          -0.06129467271851688
+        ]
+      },
+      "Skill CF": {
+        "AUC_vs_EMA": [
+          -0.09548327218606509,
+          -0.06973490452072864
+        ],
+        "RMSE_vs_EMA": [
+          0.024566048875284928,
+          0.03404630224614585
+        ],
+        "MAE_vs_EMA": [
+          0.0008119170935365392,
+          0.010654363681910837
+        ]
+      }
+    }
+  },
+  "paired_tests_vs_ema": {
+    "method": "paired two-sided t-test on per-learner test errors; Holm correction across comparisons",
+    "tests": [
+      {
+        "comparison": "Global mean minus EMA mastery",
+        "metric": "MAE",
+        "mean_per_learner_difference": 0.058075968951935626,
+        "t_statistic": 23.66681057841311,
+        "degrees_of_freedom": 2188.0,
+        "p_value": 1.9211009723952557e-110,
+        "p_value_underflow": false,
+        "n_learners": 2189,
+        "p_value_holm": 1.72899087515573e-109
+      },
+      {
+        "comparison": "Global mean minus EMA mastery",
+        "metric": "RMSE",
+        "mean_per_learner_difference": 0.04766762124259646,
+        "t_statistic": 20.275434723277577,
+        "degrees_of_freedom": 2188.0,
+        "p_value": 6.728325709152348e-84,
+        "p_value_underflow": false,
+        "n_learners": 2189,
+        "p_value_holm": 5.3826605673218785e-83
+      },
+      {
+        "comparison": "Skill mean (history) minus EMA mastery",
+        "metric": "MAE",
+        "mean_per_learner_difference": 0.04151336209274843,
+        "t_statistic": 19.7703785166816,
+        "degrees_of_freedom": 2188.0,
+        "p_value": 3.538371700766355e-80,
+        "p_value_underflow": false,
+        "n_learners": 2189,
+        "p_value_holm": 2.4768601905364488e-79
+      },
+      {
+        "comparison": "Skill mean (history) minus EMA mastery",
+        "metric": "RMSE",
+        "mean_per_learner_difference": 0.03477704054053298,
+        "t_statistic": 17.390710520262832,
+        "degrees_of_freedom": 2188.0,
+        "p_value": 1.4948682081213365e-63,
+        "p_value_underflow": false,
+        "n_learners": 2189,
+        "p_value_holm": 8.969209248728019e-63
+      },
+      {
+        "comparison": "User mean (history) minus EMA mastery",
+        "metric": "MAE",
+        "mean_per_learner_difference": 0.0011720003593439043,
+        "t_statistic": 0.4126431099394988,
+        "degrees_of_freedom": 2188.0,
+        "p_value": 0.6799085403630323,
+        "p_value_underflow": false,
+        "n_learners": 2189,
+        "p_value_holm": 0.6799085403630323
+      },
+      {
+        "comparison": "User mean (history) minus EMA mastery",
+        "metric": "RMSE",
+        "mean_per_learner_difference": 0.007087895981470276,
+        "t_statistic": 2.6111724955949964,
+        "degrees_of_freedom": 2188.0,
+        "p_value": 0.009084873539541787,
+        "p_value_underflow": false,
+        "n_learners": 2189,
+        "p_value_holm": 0.018169747079083573
+      },
+      {
+        "comparison": "Last answer on skill minus EMA mastery",
+        "metric": "MAE",
+        "mean_per_learner_difference": -0.08962648427403452,
+        "t_statistic": -24.972770435102323,
+        "degrees_of_freedom": 2188.0,
+        "p_value": 2.5594735189595965e-121,
+        "p_value_underflow": false,
+        "n_learners": 2189,
+        "p_value_holm": 2.5594735189595966e-120
+      },
+      {
+        "comparison": "Last answer on skill minus EMA mastery",
+        "metric": "RMSE",
+        "mean_per_learner_difference": 0.047444623137124754,
+        "t_statistic": 11.371995630609991,
+        "degrees_of_freedom": 2188.0,
+        "p_value": 3.731065079576358e-29,
+        "p_value_underflow": false,
+        "n_learners": 2189,
+        "p_value_holm": 1.492426031830543e-28
+      },
+      {
+        "comparison": "Skill CF minus EMA mastery",
+        "metric": "MAE",
+        "mean_per_learner_difference": 0.019605986733528546,
+        "t_statistic": 8.542177246392708,
+        "degrees_of_freedom": 2188.0,
+        "p_value": 2.4277178699771707e-17,
+        "p_value_underflow": false,
+        "n_learners": 2189,
+        "p_value_holm": 7.283153609931512e-17
+      },
+      {
+        "comparison": "Skill CF minus EMA mastery",
+        "metric": "RMSE",
+        "mean_per_learner_difference": 0.02914155939030886,
+        "t_statistic": 13.227943069246507,
+        "degrees_of_freedom": 2188.0,
+        "p_value": 1.743574342195336e-38,
+        "p_value_underflow": false,
+        "n_learners": 2189,
+        "p_value_holm": 8.717871710976681e-38
+      }
+    ]
+  },
+  "learner_group_analysis": {
+    "grouping_protocol": "Within each axis, learners are ranked by history-only mapped data and split into three nearly equal groups; test outcomes are not used to define groups. Group metrics are evaluated on mapped test interactions.",
+    "groups": {
+      "prior_accuracy": {
+        "low": {
+          "n_learners": 740,
+          "test_learners": 718,
+          "test_interactions": 8106,
+          "metrics": {
+            "Global mean": {
+              "AUC": 0.5,
+              "RMSE": 0.5430701068849906,
+              "MAE": 0.5183434035623118
+            },
+            "Skill mean (history)": {
+              "AUC": 0.6082206821645377,
+              "RMSE": 0.5241006455416715,
+              "MAE": 0.4950677738785169
+            },
+            "User mean (history)": {
+              "AUC": 0.5948460783927465,
+              "RMSE": 0.49007099839080853,
+              "MAE": 0.4621479584267123
+            },
+            "Last answer on skill": {
+              "AUC": 0.6734386230165313,
+              "RMSE": 0.5635682610703745,
+              "MAE": 0.3309855949436818
+            },
+            "EMA mastery": {
+              "AUC": 0.7053403463976813,
+              "RMSE": 0.4662232270073819,
+              "MAE": 0.4250391667665136
+            },
+            "Skill CF": {
+              "AUC": 0.6275100310607278,
+              "RMSE": 0.520110934861943,
+              "MAE": 0.4766634918277313
+            }
+          },
+          "history_feature_range": [
+            0.0,
+            0.5555555555555556
+          ]
+        },
+        "middle": {
+          "n_learners": 740,
+          "test_learners": 734,
+          "test_interactions": 14471,
+          "metrics": {
+            "Global mean": {
+              "AUC": 0.5,
+              "RMSE": 0.4833913860213377,
+              "MAE": 0.45708549464986664
+            },
+            "Skill mean (history)": {
+              "AUC": 0.6327219881893078,
+              "RMSE": 0.46844587615656097,
+              "MAE": 0.4372395633586002
+            },
+            "User mean (history)": {
+              "AUC": 0.5260690535971633,
+              "RMSE": 0.483766779983409,
+              "MAE": 0.45527704478866904
+            },
+            "Last answer on skill": {
+              "AUC": 0.620462668911084,
+              "RMSE": 0.5927566854464761,
+              "MAE": 0.3658054153433732
+            },
+            "EMA mastery": {
+              "AUC": 0.6828123210633317,
+              "RMSE": 0.45905464790386036,
+              "MAE": 0.41907480154310744
+            },
+            "Skill CF": {
+              "AUC": 0.6165624703696271,
+              "RMSE": 0.48181281033885104,
+              "MAE": 0.4164977083245883
+            }
+          },
+          "history_feature_range": [
+            0.5555555555555556,
+            0.7443365695792881
+          ]
+        },
+        "high": {
+          "n_learners": 739,
+          "test_learners": 737,
+          "test_interactions": 12558,
+          "metrics": {
+            "Global mean": {
+              "AUC": 0.5,
+              "RMSE": 0.4440185224588583,
+              "MAE": 0.42057071085678444
+            },
+            "Skill mean (history)": {
+              "AUC": 0.6297906004850281,
+              "RMSE": 0.44191125479942633,
+              "MAE": 0.4179220579331744
+            },
+            "User mean (history)": {
+              "AUC": 0.5554808443160851,
+              "RMSE": 0.44180473379760804,
+              "MAE": 0.3397231882472567
+            },
+            "Last answer on skill": {
+              "AUC": 0.6175445717691288,
+              "RMSE": 0.5434907790602483,
+              "MAE": 0.31257381161541076
+            },
+            "EMA mastery": {
+              "AUC": 0.6868225935834212,
+              "RMSE": 0.42444491618320807,
+              "MAE": 0.37687544047136584
+            },
+            "Skill CF": {
+              "AUC": 0.5627015407557978,
+              "RMSE": 0.4441379898959541,
+              "MAE": 0.36194266871194547
+            }
+          },
+          "history_feature_range": [
+            0.7446808510638298,
+            1.0
+          ]
+        }
+      },
+      "history_interaction_volume": {
+        "low": {
+          "n_learners": 740,
+          "test_learners": 717,
+          "test_interactions": 2424,
+          "metrics": {
+            "Global mean": {
+              "AUC": 0.5,
+              "RMSE": 0.4775141579551844,
+              "MAE": 0.4514380336178856
+            },
+            "Skill mean (history)": {
+              "AUC": 0.6100645962306042,
+              "RMSE": 0.46645353507910564,
+              "MAE": 0.43195279701260053
+            },
+            "User mean (history)": {
+              "AUC": 0.7155072787483854,
+              "RMSE": 0.44752373262605744,
+              "MAE": 0.37297653716866785
+            },
+            "Last answer on skill": {
+              "AUC": 0.7248187129610053,
+              "RMSE": 0.5104858793890934,
+              "MAE": 0.2815668396120464
+            },
+            "EMA mastery": {
+              "AUC": 0.7726450987320552,
+              "RMSE": 0.42765008730121445,
+              "MAE": 0.3886177633376505
+            },
+            "Skill CF": {
+              "AUC": 0.6450034849244336,
+              "RMSE": 0.46499997519526837,
+              "MAE": 0.4168869014057904
+            }
+          },
+          "history_feature_range": [
+            4,
+            24
+          ]
+        },
+        "middle": {
+          "n_learners": 740,
+          "test_learners": 733,
+          "test_interactions": 5894,
+          "metrics": {
+            "Global mean": {
+              "AUC": 0.5,
+              "RMSE": 0.5009106918585109,
+              "MAE": 0.47432978378840873
+            },
+            "Skill mean (history)": {
+              "AUC": 0.5982211728112348,
+              "RMSE": 0.49049557144998535,
+              "MAE": 0.45977469433831525
+            },
+            "User mean (history)": {
+              "AUC": 0.6422205739574401,
+              "RMSE": 0.4838330359656818,
+              "MAE": 0.43427541651160007
+            },
+            "Last answer on skill": {
+              "AUC": 0.6799039094691749,
+              "RMSE": 0.5590055824876339,
+              "MAE": 0.33277620142337133
+            },
+            "EMA mastery": {
+              "AUC": 0.7133153346597378,
+              "RMSE": 0.4594258176984616,
+              "MAE": 0.41980638975027423
+            },
+            "Skill CF": {
+              "AUC": 0.6294438062731589,
+              "RMSE": 0.48520842351207316,
+              "MAE": 0.4444461934157015
+            }
+          },
+          "history_feature_range": [
+            24,
+            65
+          ]
+        },
+        "high": {
+          "n_learners": 739,
+          "test_learners": 739,
+          "test_interactions": 26817,
+          "metrics": {
+            "Global mean": {
+              "AUC": 0.5,
+              "RMSE": 0.4814611250776123,
+              "MAE": 0.455223077531237
+            },
+            "Skill mean (history)": {
+              "AUC": 0.6192273766054439,
+              "RMSE": 0.4694126277527251,
+              "MAE": 0.44119822021694416
+            },
+            "User mean (history)": {
+              "AUC": 0.633007196313024,
+              "RMSE": 0.46982464952078623,
+              "MAE": 0.4152968204175183
+            },
+            "Last answer on skill": {
+              "AUC": 0.6394880722974441,
+              "RMSE": 0.5759277009077837,
+              "MAE": 0.345226549349473
+            },
+            "EMA mastery": {
+              "AUC": 0.7134090635997871,
+              "RMSE": 0.44817315328354496,
+              "MAE": 0.40370855803633876
+            },
+            "Skill CF": {
+              "AUC": 0.6332750738679345,
+              "RMSE": 0.4776225713985582,
+              "MAE": 0.40295890377766114
+            }
+          },
+          "history_feature_range": [
+            65,
+            685
+          ]
+        }
+      }
+    },
+    "welch_tests_on_independent_learner_groups": {
+      "model": "EMA mastery",
+      "metrics": [
+        "MAE",
+        "RMSE"
+      ],
+      "multiple_testing_correction": "Holm across all reported Welch tests",
+      "tests": [
+        {
+          "axis": "prior_accuracy",
+          "model": "EMA mastery",
+          "metric": "MAE",
+          "groups": [
+            "low",
+            "middle"
+          ],
+          "mean_difference_left_minus_right": 0.0206934418874824,
+          "t_statistic": 3.770475753610273,
+          "degrees_of_freedom": 1412.5580766706348,
+          "p_value": 0.0001696586713274644,
+          "p_value_underflow": false,
+          "n_left": 718,
+          "n_right": 734,
+          "p_value_holm": 0.0006786346853098576
+        },
+        {
+          "axis": "prior_accuracy",
+          "model": "EMA mastery",
+          "metric": "RMSE",
+          "groups": [
+            "low",
+            "middle"
+          ],
+          "mean_difference_left_minus_right": 0.015878460009902062,
+          "t_statistic": 2.9293456655879058,
+          "degrees_of_freedom": 1421.2014823455643,
+          "p_value": 0.0034509424515162916,
+          "p_value_underflow": false,
+          "n_left": 718,
+          "n_right": 734,
+          "p_value_holm": 0.007376587526719653
+        },
+        {
+          "axis": "prior_accuracy",
+          "model": "EMA mastery",
+          "metric": "MAE",
+          "groups": [
+            "middle",
+            "high"
+          ],
+          "mean_difference_left_minus_right": 0.0544020283847606,
+          "t_statistic": 9.653576969020522,
+          "degrees_of_freedom": 1416.0146063240081,
+          "p_value": 2.1293511534759885e-21,
+          "p_value_underflow": false,
+          "n_left": 734,
+          "n_right": 737,
+          "p_value_holm": 2.1293511534759887e-20
+        },
+        {
+          "axis": "prior_accuracy",
+          "model": "EMA mastery",
+          "metric": "RMSE",
+          "groups": [
+            "middle",
+            "high"
+          ],
+          "mean_difference_left_minus_right": 0.054428869057146334,
+          "t_statistic": 9.42677128755655,
+          "degrees_of_freedom": 1393.758831450762,
+          "p_value": 1.6974498341560318e-20,
+          "p_value_underflow": false,
+          "n_left": 734,
+          "n_right": 737,
+          "p_value_holm": 1.5277048507404286e-19
+        },
+        {
+          "axis": "prior_accuracy",
+          "model": "EMA mastery",
+          "metric": "MAE",
+          "groups": [
+            "low",
+            "high"
+          ],
+          "mean_difference_left_minus_right": 0.075095470272243,
+          "t_statistic": 12.45904982232032,
+          "degrees_of_freedom": 1451.5154908952104,
+          "p_value": 6.3348797348657835e-34,
+          "p_value_underflow": false,
+          "n_left": 718,
+          "n_right": 737,
+          "p_value_holm": 7.60185568183894e-33
+        },
+        {
+          "axis": "prior_accuracy",
+          "model": "EMA mastery",
+          "metric": "RMSE",
+          "groups": [
+            "low",
+            "high"
+          ],
+          "mean_difference_left_minus_right": 0.0703073290670484,
+          "t_statistic": 11.528041549348652,
+          "degrees_of_freedom": 1440.4649271238577,
+          "p_value": 1.7894746225228776e-29,
+          "p_value_underflow": false,
+          "n_left": 718,
+          "n_right": 737,
+          "p_value_holm": 1.9684220847751654e-28
+        },
+        {
+          "axis": "history_interaction_volume",
+          "model": "EMA mastery",
+          "metric": "MAE",
+          "groups": [
+            "low",
+            "middle"
+          ],
+          "mean_difference_left_minus_right": -0.037679008563079985,
+          "t_statistic": -5.64685635275883,
+          "degrees_of_freedom": 1344.6899339604445,
+          "p_value": 1.991227439918902e-08,
+          "p_value_underflow": false,
+          "n_left": 717,
+          "n_right": 733,
+          "p_value_holm": 1.1947364639513413e-07
+        },
+        {
+          "axis": "history_interaction_volume",
+          "model": "EMA mastery",
+          "metric": "RMSE",
+          "groups": [
+            "low",
+            "middle"
+          ],
+          "mean_difference_left_minus_right": -0.05164053726032508,
+          "t_statistic": -7.657583520787167,
+          "degrees_of_freedom": 1302.2352464316853,
+          "p_value": 3.6759981952898065e-14,
+          "p_value_underflow": false,
+          "n_left": 717,
+          "n_right": 733,
+          "p_value_holm": 2.940798556231845e-13
+        },
+        {
+          "axis": "history_interaction_volume",
+          "model": "EMA mastery",
+          "metric": "MAE",
+          "groups": [
+            "middle",
+            "high"
+          ],
+          "mean_difference_left_minus_right": 0.01933509231162167,
+          "t_statistic": 3.892358746557995,
+          "degrees_of_freedom": 1327.002221187598,
+          "p_value": 0.0001042048098521514,
+          "p_value_underflow": false,
+          "n_left": 733,
+          "n_right": 739,
+          "p_value_holm": 0.000521024049260757
+        },
+        {
+          "axis": "history_interaction_volume",
+          "model": "EMA mastery",
+          "metric": "RMSE",
+          "groups": [
+            "middle",
+            "high"
+          ],
+          "mean_difference_left_minus_right": 0.00873332428032908,
+          "t_statistic": 1.850149131396157,
+          "degrees_of_freedom": 1280.3572109951774,
+          "p_value": 0.06452232399861203,
+          "p_value_underflow": false,
+          "n_left": 733,
+          "n_right": 739,
+          "p_value_holm": 0.06452232399861203
+        },
+        {
+          "axis": "history_interaction_volume",
+          "model": "EMA mastery",
+          "metric": "MAE",
+          "groups": [
+            "low",
+            "high"
+          ],
+          "mean_difference_left_minus_right": -0.018343916251458314,
+          "t_statistic": -3.0353216482366197,
+          "degrees_of_freedom": 1108.192983529479,
+          "p_value": 0.002458862508906551,
+          "p_value_underflow": false,
+          "n_left": 717,
+          "n_right": 739,
+          "p_value_holm": 0.007376587526719653
+        },
+        {
+          "axis": "history_interaction_volume",
+          "model": "EMA mastery",
+          "metric": "RMSE",
+          "groups": [
+            "low",
+            "high"
+          ],
+          "mean_difference_left_minus_right": -0.042907212979996,
+          "t_statistic": -7.054532779408664,
+          "degrees_of_freedom": 1029.4031442539385,
+          "p_value": 3.1751266585597564e-12,
+          "p_value_underflow": false,
+          "n_left": 717,
+          "n_right": 739,
+          "p_value_holm": 2.2225886609918294e-11
+        }
+      ]
+    }
+  },
+  "ci_method": "paired percentile bootstrap by learner, 1000 resamples, seed=0"
+}

@@ -1,0 +1,53 @@
+{
+  "dataset": "ASSISTments Skill Builder",
+  "source_csv": "adaptiverag\\skill_builder_data.csv",
+  "eligible_interactions": 283687,
+  "learners": 2219,
+  "items": 15175,
+  "source_skills": 111,
+  "canonical_mapped_share": 0.8637970721252648,
+  "temporal_split_rows": {
+    "history": 199563,
+    "val": 42603,
+    "test": 41521
+  },
+  "history_only_item_difficulty_known_share": 0.91890850413044,
+  "ema_alpha_selected_on_validation": 0.1,
+  "validation_logloss_by_alpha": {
+    "0.05": 0.5801136404793422,
+    "0.1": 0.5725188315427917,
+    "0.15": 0.5740476730357384,
+    "0.2": 0.581573910165307,
+    "0.3": 0.61086232582718,
+    "0.4": 0.6582418776979901,
+    "0.5": 0.7244632799490444
+  },
+  "mastery_prediction_metrics_on_test": {
+    "Global mean": {
+      "AUC": 0.5,
+      "RMSE": 0.4785474817893499,
+      "MAE": 0.4522279852028934
+    },
+    "Skill mean (history)": {
+      "AUC": 0.6196826580451352,
+      "RMSE": 0.4673032238577967,
+      "MAE": 0.4368166928434756
+    },
+    "User mean (history)": {
+      "AUC": 0.649654178736481,
+      "RMSE": 0.46310779302719707,
+      "MAE": 0.40727163815571743
+    },
+    "Last answer on skill": {
+      "AUC": 0.655342050992128,
+      "RMSE": 0.5622427941258755,
+      "MAE": 0.33072799264455016
+    },
+    "EMA mastery (ours)": {
+      "AUC": 0.7223644674304603,
+      "RMSE": 0.44317044258384203,
+      "MAE": 0.398010878633976
+    }
+  },
+  "leakage_policy": "Profiles and empirical item difficulty use history; EMA alpha selected on validation; metrics report test only."
+}
