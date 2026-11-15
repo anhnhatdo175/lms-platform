@@ -33,12 +33,14 @@ CHUNK_MAX_WORDS = 380       # ~512 tokens
 CHUNK_OVERLAP_WORDS = 50
 
 # ---- difficulty scale (Step 2) -----------------------------------------------
-DIFFICULTY_LEVELS = (0.3, 0.6, 0.9)
+DIFFICULTY_LEVELS = (0.25, 0.5, 0.75)   # EASY / MEDIUM / HARD (Spec)
 
 # ---- profile (Step 3) --------------------------------------------------------
 HALF_LIFE_OPPS = 8          # recency half-life, measured in opportunities on the skill
 GAMMA = 0.7                 # weight of correctness vs. speed in w(t)
-EMA_ALPHA = 0.25            # standalone FeedbackLoop fallback; artifact-backed app uses Layer 1's tuned alpha
+EMA_ALPHA = 0.3             # BR-AI-14 (Spec); artifact-backed benchmark may override with its tuned alpha
+COLD_START_MIN_SIGNALS = 3  # BR-AI-13: fewer signals -> mastery stays at the prior
+COLD_START_MASTERY = 0.5
 MIN_SKILL_DOCS = 20         # a skill is "retrievable" only if the corpus has >= this many chunks
 MIN_DOCS_PER_LEVEL = 3      # ...and >= this many at each difficulty level it exposes
 
@@ -74,6 +76,10 @@ SUBJECT_DEFAULT = "Mathematics"                              # all bundled exerc
 LLM_BACKEND = os.environ.get("LLM_BACKEND", "ollama").lower()
 GENERATION_MODEL = os.environ.get("GENERATION_MODEL", "qwen3:8b")
 GROQ_API_KEY = os.environ.get("GROQ_API_KEY", "")
+LLM_BASE_URL = os.environ.get("LLM_BASE_URL", "https://api.openai.com/v1")
+LLM_API_KEY = os.environ.get("LLM_API_KEY", "")
+LLM_MODEL = os.environ.get("LLM_MODEL", "")
+LLM_TIMEOUT_SECONDS = float(os.environ.get("LLM_TIMEOUT_SECONDS", "60"))
 OLLAMA_BASE_URL = os.environ.get("OLLAMA_BASE_URL", "http://127.0.0.1:11434")
 OLLAMA_CONTEXT_LENGTH = int(os.environ.get("OLLAMA_CONTEXT_LENGTH", "4096"))
 OLLAMA_MAX_NEW_TOKENS = int(os.environ.get("OLLAMA_MAX_NEW_TOKENS", "512"))

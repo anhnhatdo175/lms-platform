@@ -6,7 +6,31 @@ Python AI service (Adaptive Profile-Based RAG) của Người C. Stateless: Spri
 - `tests/`: pytest.
 - Cấu hình: copy `lmsrag/.env.example` thành `lmsrag/.env` (không commit; không để API key trong repo).
 
-Chạy test: `cd ai-service && pip install -r requirements.txt && python -m pytest tests`
+## Chạy
 
-Trạng thái: mới chuyển từ prototype. Còn phải làm: embedder multilingual-e5-base, vector store Qdrant, chế độ LLM giả (`fake`), Dockerfile, API theo OpenAPI.
-Benchmark nằm ở `research/benchmark/` (tách khỏi runtime, BR-AI-09).
+```
+pip install -r requirements-dev.txt
+LLM_BACKEND=fake EMBEDDER=hash QDRANT_URL=:memory: uvicorn lmsrag.api:app --port 8000
+```
+
+Với Docker: `docker compose up qdrant ai-service` ở gốc repo (mặc định fake LLM + hash embedder, không cần key). Dùng thật: `AI_LLM_BACKEND=openai`, `AI_LLM_API_KEY`, `AI_EMBEDDER=e5`, `AI_WITH_E5=true` (build lại image; kéo theo torch).
+
+## API nội bộ (Spring gọi, không public)
+
+| Endpoint | Việc |
+|---|---|
+| `GET /health` | kiểm tra sống |
+| `POST /v1/ingest` | nhận text đã trích xuất + `document_id`, `course_id`; chunk, embed, ghi Qdrant (ingest lại sẽ thay chunk cũ) |
+| `DELETE /v1/documents/{id}` | xoá chunk của tài liệu |
+| `POST /v1/retrieve` | tìm chunk **trong** `allowed_course_ids` (rỗng thì không trả gì) |
+| `POST /v1/generate` | retrieve + sinh nhiệm vụ + validate; lỗi model trả 502/422 để Spring đánh dấu phiên FAILED |
+
+Đặt `AI_SERVICE_TOKEN` để bắt buộc header `X-Internal-Token`. Đây là hợp đồng nội bộ do C đề xuất; OpenAPI hiện chưa định nghĩa API Spring↔AI, cần nhóm xác nhận.
+
+## Test
+
+`python -m pytest tests -q` (cần `requirements-dev.txt`; test cũ của prototype còn cần `faiss-cpu scikit-learn scipy tiktoken`).
+Có 5 test cũ của prototype đang fail từ trước khi sửa (test double `FakeRecommender` thiếu `profile_vector_for`, v.v.), chưa xử lý.
+
+Trạng thái: còn phải làm bước verify đáp án độc lập (BR-AI-17) cho nhiệm vụ do LLM sinh, và các gói Spring phía sau.
+Benchmark nằm ở `research/benchmark/` (tách khỏi runtime, BR-AI-09). Benchmark đã chạy với hằng số cũ (độ khó 0.3/0.6/0.9, EMA 0.25); cần chạy lại.

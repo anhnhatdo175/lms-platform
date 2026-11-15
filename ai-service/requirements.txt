@@ -1,16 +1,8 @@
-pandas
-numpy
-scipy
-scikit-learn
-faiss-cpu
-datasketch
-tiktoken
-groq
-matplotlib
-tqdm
-python-dotenv
-sentence-transformers
-transformers
-accelerate
-bitsandbytes
-sentencepiece
+# Runtime of the AI service (fake LLM + hash embedder work with just this).
+fastapi>=0.110
+uvicorn[standard]>=0.29
+pydantic>=2.6
+qdrant-client>=1.9
+numpy>=1.26
+pandas>=2.0
+python-dotenv>=1.0
