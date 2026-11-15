@@ -79,6 +79,16 @@ public class AdaptivePracticeConfig {
     public AdaptivePracticeConfig() {
     }
 
+    /** Cấu hình mới cho Course ({@code lessonId == null}) hoặc ghi đè cho một Lesson. */
+    public static AdaptivePracticeConfig create(long courseId, Long lessonId, Instant now) {
+        AdaptivePracticeConfig c = new AdaptivePracticeConfig();
+        c.courseId = courseId;
+        c.lessonId = lessonId;
+        c.createdAt = now;
+        c.updatedAt = now;
+        return c;
+    }
+
     public Long getId() {
         return id;
     }
