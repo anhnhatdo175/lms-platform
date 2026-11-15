@@ -2,12 +2,19 @@
 
 * ``bge``   : BAAI/bge-small-en-v1.5 via sentence-transformers (what the original repo used).
               Needs the HuggingFace hub, i.e. run it on your own machine / Colab.
+* ``e5``    : intfloat/multilingual-e5-base (768-d, multilingual incl. Vietnamese). Production choice (D3).
+              Uses the ``query: `` / ``passage: `` prefixes the model was trained with.
+* ``hash``  : feature-hashing bag of words/bigrams. Offline, deterministic, no model download.
+              For unit tests, CI and the fake-LLM demo only; it is not a semantic model.
 * ``lsa``   : TF-IDF (1-2 grams) + truncated SVD. Fully offline, deterministic, no downloads.
               Used for the numbers produced inside the sandbox where HF is blocked.
 """
 from __future__ import annotations
 
+import hashlib
+import os
 import pickle
+import re
 from pathlib import Path
 
 import numpy as np
@@ -66,5 +73,72 @@ class BgeEmbedder:
         return self.encode([self.QUERY_PREFIX + t for t in texts])
 
 
-def make_embedder(kind: str):
-    return BgeEmbedder() if kind == "bge" else LsaEmbedder()
+class E5Embedder:
+    name = "e5"
+    dim = 768
+    QUERY_PREFIX = "query: "
+    PASSAGE_PREFIX = "passage: "
+
+    def __init__(self, model: str | None = None):
+        from sentence_transformers import SentenceTransformer
+        self.model_name = model or os.environ.get("EMBED_MODEL", "intfloat/multilingual-e5-base")
+        self.model = SentenceTransformer(self.model_name)
+
+    def fit(self, texts):  # stateless
+        return self
+
+    def _encode(self, texts: list[str]) -> np.ndarray:
+        return _l2(self.model.encode(texts, batch_size=32, normalize_embeddings=True, show_progress_bar=False))
+
+    def encode(self, texts: list[str]) -> np.ndarray:
+        """Documents/passages (what gets indexed)."""
+        return self._encode([self.PASSAGE_PREFIX + t for t in texts])
+
+    encode_passages = encode
+
+    def encode_queries(self, texts: list[str]) -> np.ndarray:
+        return self._encode([self.QUERY_PREFIX + t for t in texts])
+
+
+class HashEmbedder:
+    """Deterministic feature-hashing embedder (no downloads). Uses sha1, never ``hash()``,
+    so vectors are identical across processes and machines."""
+
+    name = "hash"
+    _TOKEN = re.compile(r"\w+", re.UNICODE)
+
+    def __init__(self, dim: int = 256):
+        self.dim = dim
+
+    def fit(self, texts):  # stateless
+        return self
+
+    def _features(self, text: str) -> list[str]:
+        words = self._TOKEN.findall(text.casefold())
+        return words + [f"{a} {b}" for a, b in zip(words, words[1:])]
+
+    def encode(self, texts: list[str]) -> np.ndarray:
+        out = np.zeros((len(texts), self.dim), dtype="float32")
+        for row, text in enumerate(texts):
+            for feature in self._features(text):
+                digest = hashlib.sha1(feature.encode("utf-8")).digest()
+                bucket = int.from_bytes(digest[:4], "big") % self.dim
+                sign = 1.0 if digest[4] & 1 else -1.0
+                out[row, bucket] += sign
+        return _l2(out)
+
+    encode_passages = encode
+    encode_queries = encode
+
+
+def make_embedder(kind: str | None = None):
+    kind = (kind or os.environ.get("EMBEDDER", "lsa")).lower()
+    if kind == "e5":
+        return E5Embedder()
+    if kind == "hash":
+        return HashEmbedder()
+    if kind == "bge":
+        return BgeEmbedder()
+    if kind == "lsa":
+        return LsaEmbedder()
+    raise ValueError(f"Unsupported EMBEDDER: {kind!r}")

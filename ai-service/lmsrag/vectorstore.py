@@ -5,8 +5,13 @@ import json
 from collections import defaultdict
 from pathlib import Path
 
-import faiss
 import numpy as np
+
+
+def _faiss():
+    """Lazy import: the legacy FAISS store is only needed by the benchmark/offline pipeline."""
+    import faiss
+    return faiss
 
 
 class VectorStore:
@@ -14,6 +19,7 @@ class VectorStore:
         assert len(vectors) == len(meta)
         self.vectors = np.ascontiguousarray(vectors, dtype="float32")
         self.meta = meta
+        faiss = _faiss()
         self.index = faiss.IndexFlatIP(self.vectors.shape[1])
         self.index.add(self.vectors)
         self.chunk_pos = {m["chunk_id"]: i for i, m in enumerate(meta)}
@@ -41,6 +47,7 @@ class VectorStore:
             ids = self.ids_by_tag.get(where_skill_tag)
             if ids is None or len(ids) == 0:
                 return []
+            faiss = _faiss()
             params = faiss.SearchParameters()
             params.sel = faiss.IDSelectorBatch(ids)
             D, I = self.index.search(q, min(k, len(ids)), params=params)
@@ -81,6 +88,7 @@ class VectorStore:
     def search_ids(self, qvec: np.ndarray, ids: np.ndarray, k: int):
         if len(ids) == 0:
             return []
+        faiss = _faiss()
         params = faiss.SearchParameters()
         params.sel = faiss.IDSelectorBatch(ids)
         q = np.ascontiguousarray(qvec.reshape(1, -1), dtype="float32")

@@ -1,0 +1,3 @@
+# Production embedding model (EMBEDDER=e5): multilingual-e5-base. Pulls torch, so it is optional.
+-r requirements.txt
+sentence-transformers>=3.0

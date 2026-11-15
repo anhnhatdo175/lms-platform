@@ -128,9 +128,39 @@ def _generate_groq(prompt: str, model_name: str) -> str:
     raise RuntimeError("Groq retry loop ended unexpectedly.")
 
 
+def _generate_openai(prompt: str, model_name: str, json_mode: bool) -> str:
+    """Any OpenAI-compatible /chat/completions endpoint (base URL, key, model from env)."""
+    if not config.LLM_API_KEY:
+        raise ValueError("Set LLM_API_KEY in the environment for LLM_BACKEND=openai.")
+    payload: dict[str, Any] = {
+        "model": model_name, "temperature": 0,
+        "messages": [{"role": "user", "content": prompt}],
+    }
+    if json_mode:
+        payload["response_format"] = {"type": "json_object"}
+    req = request.Request(
+        f"{config.LLM_BASE_URL.rstrip('/')}/chat/completions",
+        data=json.dumps(payload).encode("utf-8"),
+        headers={"Content-Type": "application/json", "Authorization": f"Bearer {config.LLM_API_KEY}"},
+        method="POST",
+    )
+    try:
+        with request.urlopen(req, timeout=config.LLM_TIMEOUT_SECONDS) as response:
+            result = json.loads(response.read().decode("utf-8"))
+    except Exception as exc:  # network/HTTP error: never leak the key or the raw body
+        raise RuntimeError(f"Could not call LLM endpoint {config.LLM_BASE_URL}.") from exc
+    try:
+        answer = result["choices"][0]["message"]["content"]
+    except (KeyError, IndexError, TypeError) as exc:
+        raise ValueError("LLM endpoint returned an unexpected response shape.") from exc
+    if not answer:
+        raise ValueError("LLM endpoint returned an empty response.")
+    return answer.strip()
+
+
 def generate_answer(prompt: str, model: str | None = None, json_mode: bool = False,
                     json_schema: dict[str, Any] | None = None) -> tuple[str, float]:
-    """Generate text with the configured Transformers, Ollama, or Groq backend."""
+    """Generate text with the configured backend (transformers, ollama, groq, openai, fake)."""
     started = time.perf_counter()
     model_name = model or config.GENERATION_MODEL
     backend = config.LLM_BACKEND
@@ -140,6 +170,11 @@ def generate_answer(prompt: str, model: str | None = None, json_mode: bool = Fal
         answer = _generate_ollama(prompt, model_name, json_mode, json_schema)
     elif backend == "groq":
         answer = _generate_groq(prompt, model_name)
+    elif backend == "openai":
+        answer = _generate_openai(prompt, config.LLM_MODEL or model_name, json_mode)
+    elif backend == "fake":
+        from lmsrag.fake_llm import fake_generate
+        answer = fake_generate(prompt)
     else:
         raise ValueError(f"Unsupported LLM_BACKEND: {backend!r}")
     return answer, time.perf_counter() - started
