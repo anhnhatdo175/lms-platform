@@ -19,6 +19,8 @@ class AttemptGradingTest {
     void exactIgnoresCaseAndWhitespace() {
         assertTrue(RuleBasedGrader.grade("exact", "Hà Nội", "  hà   nội ").correct());
         assertFalse(RuleBasedGrader.grade("exact", "Hà Nội", "Huế").correct());
+        assertTrue(RuleBasedGrader.grade("exact", "5/7", " 5 / 7 ").correct());
+        assertFalse(RuleBasedGrader.grade("exact", "5/7", "10/14").correct());
     }
 
     @Test
@@ -36,6 +38,15 @@ class AttemptGradingTest {
         assertFalse(g.gradable());
         assertNull(g.correct());
         assertFalse(RuleBasedGrader.grade("exact", null, "x").gradable());
+    }
+
+    @Test
+    void numericAnswersDisplayWithoutTrailingZeros() {
+        assertEquals("37", AdaptiveAttemptService.displayAnswer(37.0));
+        assertEquals("2.6", AdaptiveAttemptService.displayAnswer(2.60));
+        assertEquals("144000", AdaptiveAttemptService.displayAnswer(144000L));
+        assertEquals("5/7", AdaptiveAttemptService.displayAnswer("5/7"));
+        assertNull(AdaptiveAttemptService.displayAnswer(null));
     }
 
     private static void rejects(SubmitRequest r, int status) {

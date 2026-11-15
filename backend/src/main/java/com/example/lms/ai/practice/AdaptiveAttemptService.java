@@ -125,14 +125,16 @@ public class AdaptiveAttemptService {
         attempt.setMaxScore(BigDecimal.ONE);
         attempt.setHintsUsed(hintsUsed);
         attempt.setResponseTimeMs(request.responseTimeMs());
-        attempt.setGradingMethod(GradingMethod.RULE_BASED);
-        attempt.setGradedAt(now);
         if (grade.gradable()) {
+            attempt.setGradingMethod(GradingMethod.RULE_BASED);
+            attempt.setGradedAt(now);
             attempt.setCorrect(grade.correct());
             attempt.setScore(grade.correct() ? BigDecimal.ONE : BigDecimal.ZERO);
             attempt.setFeedbackText(grade.correct() ? "Chính xác." : "Chưa đúng.");
             attempt.setGradingConfidence(BigDecimal.ONE);
         } else {
+            // Chưa chấm: chờ giáo viên, nên không có gradedAt.
+            attempt.setGradingMethod(GradingMethod.TEACHER);
             attempt.setFeedbackText("Câu trả lời đã được ghi nhận, cần giáo viên xem lại.");
         }
         attempts.saveAndFlush(attempt);
@@ -195,8 +197,19 @@ public class AdaptiveAttemptService {
         Object answer = JsonSupport.object(task.getAnswerKeyJson()).get("answer");
         return new AttemptResult(a.getId(), a.getTaskId(), a.getCorrect(),
                 a.getScore() == null ? 0.0 : a.getScore().doubleValue(), a.getFeedbackText(),
-                answer == null ? null : String.valueOf(answer), task.getExplanation(), profileUpdated, before, after,
+                displayAnswer(answer), task.getExplanation(), profileUpdated, before, after,
                 a.getSubmittedAt(), a.getHintsUsed(), duplicate);
+    }
+
+    /** Số nguyên không kèm ".0", số thập phân bỏ số 0 thừa; chuỗi giữ nguyên. */
+    static String displayAnswer(Object answer) {
+        if (answer == null) {
+            return null;
+        }
+        if (answer instanceof Number n) {
+            return new BigDecimal(n.toString()).stripTrailingZeros().toPlainString();
+        }
+        return String.valueOf(answer);
     }
 
     /** @return văn bản đáp án đã kiểm tra hợp lệ */
