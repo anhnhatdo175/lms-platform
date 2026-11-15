@@ -38,6 +38,17 @@ public class AdaptiveTaskHintEvent {
     public AdaptiveTaskHintEvent() {
     }
 
+    public static AdaptiveTaskHintEvent create(long taskId, long studentId, String idempotencyKey, int hintIndex,
+            Instant now) {
+        AdaptiveTaskHintEvent e = new AdaptiveTaskHintEvent();
+        e.taskId = taskId;
+        e.studentId = studentId;
+        e.idempotencyKey = idempotencyKey;
+        e.hintIndex = hintIndex;
+        e.createdAt = now;
+        return e;
+    }
+
     public Long getId() {
         return id;
     }

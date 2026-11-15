@@ -8,6 +8,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.example.lms.ai.practice.AttemptViews.AttemptHistory;
@@ -21,10 +22,13 @@ import com.example.lms.shared.web.ApiResponse;
 public class AdaptiveAttemptController {
 
     private final AdaptiveAttemptService service;
+    private final AdaptiveHintService hintService;
     private final CurrentUserProvider currentUser;
 
-    public AdaptiveAttemptController(AdaptiveAttemptService service, CurrentUserProvider currentUser) {
+    public AdaptiveAttemptController(AdaptiveAttemptService service, AdaptiveHintService hintService,
+            CurrentUserProvider currentUser) {
         this.service = service;
+        this.hintService = hintService;
         this.currentUser = currentUser;
     }
 
@@ -40,5 +44,12 @@ public class AdaptiveAttemptController {
     @GetMapping("/student/ai/adaptive-tasks/{taskId}/attempts")
     public ApiResponse<List<AttemptHistory>> history(@PathVariable long taskId) {
         return ApiResponse.of(service.history(currentUser.current().id(), taskId));
+    }
+
+    /** Mỗi Idempotency-Key mới trả gợi ý kế tiếp; gửi lại cùng key trả lại gợi ý cũ với {@code duplicate=true}. */
+    @PostMapping("/student/ai/adaptive-tasks/{taskId}/hints")
+    public ApiResponse<AdaptiveHintService.HintView> hint(@PathVariable long taskId,
+            @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey) {
+        return ApiResponse.of(hintService.request(currentUser.current().id(), taskId, idempotencyKey));
     }
 }
