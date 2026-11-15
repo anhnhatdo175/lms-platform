@@ -1,0 +1,10 @@
+# Offline benchmark/experiments only (not needed at runtime).
+-r ../../ai-service/requirements.txt
+scipy
+scikit-learn
+faiss-cpu
+datasketch
+tiktoken
+matplotlib
+tqdm
+sentence-transformers
