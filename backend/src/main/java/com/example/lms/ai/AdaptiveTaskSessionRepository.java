@@ -9,6 +9,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.transaction.annotation.Transactional;
 
 /**
  * Các UPDATE có điều kiện {@code status} + {@code attemptCount} là cơ chế fencing của Spec 20A.14: trả 0 dòng nghĩa là
@@ -35,6 +36,7 @@ public interface AdaptiveTaskSessionRepository extends JpaRepository<AdaptiveTas
             """)
     List<AdaptiveTaskSession> findLeaseExpired(Instant now, Pageable pageable);
 
+    @Transactional
     @Modifying(flushAutomatically = true, clearAutomatically = true)
     @Query("""
             UPDATE AdaptiveTaskSession s
@@ -44,6 +46,7 @@ public interface AdaptiveTaskSessionRepository extends JpaRepository<AdaptiveTas
             """)
     int claim(long id, int seenAttempt, Instant lease, String worker);
 
+    @Transactional
     @Modifying(flushAutomatically = true, clearAutomatically = true)
     @Query("""
             UPDATE AdaptiveTaskSession s
@@ -53,6 +56,7 @@ public interface AdaptiveTaskSessionRepository extends JpaRepository<AdaptiveTas
             """)
     int markSucceeded(long id, int attempt, Instant now, String pipeline, String trace);
 
+    @Transactional
     @Modifying(flushAutomatically = true, clearAutomatically = true)
     @Query("""
             UPDATE AdaptiveTaskSession s
@@ -62,6 +66,7 @@ public interface AdaptiveTaskSessionRepository extends JpaRepository<AdaptiveTas
             """)
     int markFailed(long id, int attempt, Instant now, SessionErrorCode code, String message);
 
+    @Transactional
     @Modifying(flushAutomatically = true, clearAutomatically = true)
     @Query("""
             UPDATE AdaptiveTaskSession s
@@ -71,6 +76,7 @@ public interface AdaptiveTaskSessionRepository extends JpaRepository<AdaptiveTas
             """)
     int markRequeued(long id, int attempt, Instant next, SessionErrorCode code, String message);
 
+    @Transactional
     @Modifying(flushAutomatically = true, clearAutomatically = true)
     @Query("""
             UPDATE AdaptiveTaskSession s
