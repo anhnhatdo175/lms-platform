@@ -90,6 +90,21 @@ public class HttpAiServiceClient implements AiServiceClient {
     }
 
     @Override
+    public String extractText(String filename, byte[] content) {
+        try {
+            String response = http.post()
+                    .uri(uri -> uri.path("/v1/extract").queryParam("filename", "{name}").build(filename))
+                    .contentType(MediaType.APPLICATION_OCTET_STREAM).body(content).retrieve().body(String.class);
+            return String.valueOf(JsonReader.parseObject(response).get("text"));
+        } catch (RestClientResponseException e) {
+            throw new AiServiceException(e.getStatusCode().value() == 422 ? AiServiceException.Kind.INVALID_OUTPUT
+                    : AiServiceException.Kind.UNAVAILABLE, "AI service returned HTTP " + e.getStatusCode().value());
+        } catch (RuntimeException e) {
+            throw new AiServiceException(AiServiceException.Kind.UNAVAILABLE, "AI service is unreachable", e);
+        }
+    }
+
+    @Override
     public void deleteDocument(long documentId) {
         try {
             http.delete().uri("/v1/documents/" + documentId).retrieve().toBodilessEntity();

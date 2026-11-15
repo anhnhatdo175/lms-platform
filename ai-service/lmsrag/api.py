@@ -13,11 +13,12 @@ import os
 from typing import Any, Literal
 
 import numpy as np
-from fastapi import Depends, FastAPI, Header, HTTPException
+from fastapi import Depends, FastAPI, Header, HTTPException, Query, Request
 from pydantic import BaseModel, Field
 
 from lmsrag import config
 from lmsrag.embedder import make_embedder
+from lmsrag.extract import ExtractError, extract_text
 from lmsrag.layer2_embedding.chunk import chunk_text
 from lmsrag.layer5_generation.generator import GenerationContext, LLMGenerator
 from lmsrag.qdrant_store import ChunkRecord, QdrantChunkStore, make_client
@@ -38,6 +39,11 @@ class IngestResponse(BaseModel):
     document_id: int
     chunk_count: int
     embedder: str
+
+
+class ExtractResponse(BaseModel):
+    text: str
+    char_count: int
 
 
 class RetrieveRequest(BaseModel):
@@ -141,6 +147,15 @@ def create_app(services: Services | None = None, generate_fn: Any = None) -> Fas
         svc.store.upsert_chunks(records, vectors)
         return IngestResponse(document_id=req.document_id, chunk_count=len(records),
                               embedder=getattr(svc.embedder, "name", "unknown"))
+
+    @app.post("/v1/extract", response_model=ExtractResponse, dependencies=[Depends(require_token)])
+    async def extract(request: Request, filename: str = Query(min_length=1, max_length=255)) -> ExtractResponse:
+        body = await request.body()
+        try:
+            text = extract_text(filename, body)
+        except ExtractError as exc:
+            raise HTTPException(status_code=422, detail={"code": "EXTRACT_FAILED", "message": str(exc)})
+        return ExtractResponse(text=text, char_count=len(text))
 
     @app.delete("/v1/documents/{document_id}", status_code=204, dependencies=[Depends(require_token)])
     def delete_document(document_id: int) -> None:
