@@ -3,6 +3,7 @@ package com.example.lms.question;
 import java.util.Collection;
 import java.util.List;
 
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
@@ -16,4 +17,13 @@ public interface QuestionRepository extends JpaRepository<Question, Long>, JpaSp
     /** Question đã nằm trong snapshot của Attempt thì không được xóa logic (OpenAPI deactivateQuestion). */
     @Query(value = "SELECT COUNT(*) FROM attempt_questions WHERE source_question_id = :questionId", nativeQuery = true)
     long countAttemptSnapshots(long questionId);
+
+    /** Nội dung đề (không đáp án) của Question đang hoạt động theo kỹ năng; AI dùng làm ngữ cảnh truy vấn. */
+    @Query("""
+            SELECT q.content FROM Question q
+            WHERE q.courseId = :courseId AND q.skillCode = :skillCode AND q.active = true
+            ORDER BY q.id
+            """)
+    List<String> findActiveContentsByCourseAndSkill(long courseId, String skillCode,
+            Pageable pageable);
 }

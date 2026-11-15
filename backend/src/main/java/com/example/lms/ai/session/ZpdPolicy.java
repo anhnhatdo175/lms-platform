@@ -53,6 +53,33 @@ public final class ZpdPolicy {
         return best;
     }
 
+    /**
+     * Score_ZPD từng khoảng của GVHD trên {@code Δ = Difficulty − Mastery} (cùng biên với
+     * {@code recommender.zpd_score} phía Python): 1.0 với [0.05, 0.30]; 0.7 với [−0.10, 0.05); 0.5 với (0.30, 0.50];
+     * 0.3 với Δ < −0.10; 0.2 với Δ > 0.50. Dùng để XẾP HẠNG ứng viên; M + δ dùng khi SINH (BR-AI-03).
+     * Δ được làm tròn 6 chữ số trước khi so biên, để sai số số thực (0.25 − 0.2 = 0.04999…) không đẩy điểm biên
+     * sang khoảng thấp hơn.
+     */
+    public static double score(double rawDelta) {
+        if (!Double.isFinite(rawDelta)) {
+            throw new IllegalArgumentException("delta must be finite");
+        }
+        double delta = Math.round(rawDelta * 1e6) / 1e6;
+        if (delta >= 0.05 && delta <= 0.30) {
+            return 1.0;
+        }
+        if (delta >= -0.10 && delta < 0.05) {
+            return 0.7;
+        }
+        if (delta > 0.30 && delta <= 0.50) {
+            return 0.5;
+        }
+        if (delta < -0.10) {
+            return 0.3;
+        }
+        return 0.2;
+    }
+
     private static double clamp01(double v) {
         return Math.max(0.0, Math.min(1.0, v));
     }

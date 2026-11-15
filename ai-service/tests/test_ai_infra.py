@@ -156,6 +156,23 @@ def test_fake_llm_never_leaks_answer_in_hints(fake):
     assert str(task["answer_key"]) not in text
 
 
+@pytest.mark.parametrize("skill,marker", [("fractions", "/"), ("decimals", ","), ("percentages", "%"),
+                                          ("geo", "+")])
+@pytest.mark.parametrize("difficulty", [0.25, 0.5, 0.75])
+def test_fake_llm_task_matches_skill_and_passes_validation(fake, skill, marker, difficulty):
+    ctx = GenerationContext(
+        retrieved_docs=[{"doc_id": "1:0", "text": "Tài liệu chung", "skill_tag": None}],
+        candidate_tasks=[], learner_profile={"skills": {skill: {"mastery": 0.5}}},
+        constraints={"mode": "practice", "target_skill": skill, "target_difficulty": difficulty,
+                     "language": "vi", "allow_new_task_generation": True})
+    task = LLMGenerator().generate(ctx)["task"]
+    assert task["skill_tag"] == skill and marker in task["prompt"]
+    answer = str(task["answer_key"])
+    assert all(answer not in h for h in task["hints"])
+    if task["response_type"] == "exact":
+        assert "/" in answer                       # phân số tối giản, chấm khớp chuỗi
+
+
 def test_fake_generate_rejects_prompt_without_context():
     with pytest.raises(ValueError):
         fake_generate("no context here")
@@ -258,3 +275,13 @@ def test_hint_revealing_answer_before_a_period_is_rejected(fake):
 
     with pytest.raises(ValueError, match="final answer"):
         LLMGenerator(llm).generate(context)
+
+
+def test_rerank_prefers_target_skill_but_keeps_strong_general_chunks():
+    from lmsrag.api import rerank_for_skill
+    hits = [{"doc_id": "a", "score": 0.80, "skill_code": None},
+            {"doc_id": "b", "score": 0.78, "skill_code": "frac"},
+            {"doc_id": "c", "score": 0.60, "skill_code": "frac"},
+            {"doc_id": "d", "score": 0.90, "skill_code": None}]
+    assert [h["doc_id"] for h in rerank_for_skill(hits, "frac", 3)] == ["d", "b", "a"]
+    assert [h["doc_id"] for h in rerank_for_skill(hits, None, 2)] == ["d", "a"]

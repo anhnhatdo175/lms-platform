@@ -25,6 +25,7 @@ class AiSessionTaskProducerTest {
     private Function<AiServiceClient.GenerateCall, AiServiceClient.GenerateOutcome> ai = c -> good(c);
     private Map<String, LearnerContextProvider.SkillMastery> skills = Map.of();
     private List<Long> docs = List.of(11L, 12L);
+    private Map<String, List<String>> bank = Map.of("frac", List.of("Tính 1/5 + 2/5.", "Rút gọn phân số 6/8."));
 
     private static AiServiceClient.GenerateOutcome good(AiServiceClient.GenerateCall c) {
         return new AiServiceClient.GenerateOutcome(true, "Tính 12 + 30.", 42, "numeric", List.of("Cộng hai số."),
@@ -40,7 +41,8 @@ class AiSessionTaskProducerTest {
             calls.add(call);
             return ai.apply(call);
         };
-        return new AiSessionTaskProducer(client, new StructuralTaskVerifier(), id -> skills, (c, l) -> docs);
+        return new AiSessionTaskProducer(client, new StructuralTaskVerifier(), id -> skills, (c, l) -> docs,
+                (course, skill, limit) -> bank.getOrDefault(skill, List.of()).stream().limit(limit).toList());
     }
 
     // ---------- ZPD ----------
@@ -59,6 +61,56 @@ class AiSessionTaskProducerTest {
         assertFalse(ZpdPolicy.isColdStart(3));
         assertEquals(0.5, ZpdPolicy.effectiveMastery(0.99, 2));
         assertEquals(Difficulty.MEDIUM, ZpdPolicy.target(0.99, 0, Difficulty.EASY, Difficulty.HARD));
+    }
+
+    // ---------- Score_ZPD (cùng biên với recommender.zpd_score phía Python) ----------
+    @Test
+    void zpdScoreBoundaries() {
+        assertEquals(1.0, ZpdPolicy.score(0.05));
+        assertEquals(1.0, ZpdPolicy.score(0.30));
+        assertEquals(0.7, ZpdPolicy.score(0.0499));
+        assertEquals(0.7, ZpdPolicy.score(-0.10));
+        assertEquals(0.3, ZpdPolicy.score(-0.1001));
+        assertEquals(0.5, ZpdPolicy.score(0.3001));
+        assertEquals(0.5, ZpdPolicy.score(0.50));
+        assertEquals(0.2, ZpdPolicy.score(0.5001));
+    }
+
+    @Test
+    void plannerRanksByZpdScoreThenWeakerFirst() {
+        // strong bị Teacher giới hạn ở MEDIUM: Δ = 0.5 - 0.9 = -0.4 → 0.3, xếp sau cùng dù có dữ liệu
+        var plans = SkillPlanner.rank(List.of("strong", "weak", "cold"),
+                Map.of("strong", new LearnerContextProvider.SkillMastery(0.9, 10),
+                        "weak", new LearnerContextProvider.SkillMastery(0.2, 10)),
+                Difficulty.EASY, Difficulty.MEDIUM);
+        assertEquals(List.of("weak", "cold", "strong"), plans.stream().map(SkillPlanner.SkillPlan::skill).toList());
+        assertEquals(1.0, plans.get(0).zpdScore());    // 0.25 - 0.2 = 0.05
+        assertEquals(0.7, plans.get(1).zpdScore());    // cold start: 0.5 - 0.5 = 0
+        assertTrue(plans.get(1).coldStart());
+        assertEquals(0.3, plans.get(2).zpdScore());
+    }
+
+    @Test
+    void profileQueryUsesBankExamplesAndMasteryFocus() {
+        var weak = new SkillPlanner.SkillPlan("frac", 0.2, 10, false, Difficulty.EASY, 0.05, 1.0);
+        var strong = new SkillPlanner.SkillPlan("frac", 0.8, 10, false, Difficulty.HARD, -0.05, 0.7);
+        String q = ProfileQuery.build(weak, List.of("Tính 1/5 + 2/5.", " ", "Rút gọn 6/8."));
+        assertTrue(q.startsWith("frac. khái niệm cơ bản"));
+        assertTrue(q.contains("Tính 1/5 + 2/5.") && q.contains("Rút gọn 6/8."));
+        assertTrue(ProfileQuery.build(strong, List.of()).contains("vận dụng"));
+        assertTrue(ProfileQuery.build(weak, List.of("x".repeat(5000))).length() <= ProfileQuery.MAX_LENGTH);
+    }
+
+    @Test
+    void producerSendsProfileQueryAndRecordsRanking() {
+        skills = Map.of("frac", new LearnerContextProvider.SkillMastery(0.2, 6));
+        var result = producer().produce(session(1, null, null, CONSTRAINTS));
+        AiServiceClient.GenerateCall call = calls.get(0);
+        assertEquals("frac", call.targetSkill());
+        assertTrue(call.query().contains("Tính 1/5 + 2/5."));
+        assertTrue(call.learnerProfile().toString().contains("geo"));
+        assertTrue(result.retrievalTraceJson().contains("\"skillRanking\""));
+        assertTrue(result.retrievalTraceJson().contains("\"zpdScore\":1.0"));
     }
 
     // ---------- producer ----------

@@ -116,6 +116,22 @@ class Services:
         return self._store
 
 
+SKILL_MATCH_BONUS = 0.05
+OVERFETCH = 3
+
+
+def rerank_for_skill(hits: list[dict[str, Any]], target_skill: str | None, top_k: int) -> list[dict[str, Any]]:
+    """Ưu tiên chunk gắn đúng kỹ năng mục tiêu hơn tài liệu chung (lọc kỹ năng đã là lọc mềm).
+
+    Điểm = độ tương đồng + SKILL_MATCH_BONUS nếu khớp kỹ năng; giữ thứ tự ổn định khi bằng điểm.
+    """
+    def key(item: tuple[int, dict[str, Any]]) -> tuple[float, int]:
+        idx, h = item
+        bonus = SKILL_MATCH_BONUS if target_skill and h.get("skill_code") == target_skill else 0.0
+        return (-(float(h["score"]) + bonus), idx)
+    return [h for _, h in sorted(enumerate(hits), key=key)][:top_k]
+
+
 def _difficulty_value(value: float | str) -> float:
     if isinstance(value, str):
         return dict(zip(("EASY", "MEDIUM", "HARD"), config.DIFFICULTY_LEVELS))[value]
@@ -173,8 +189,8 @@ def create_app(services: Services | None = None, generate_fn: Any = None) -> Fas
 
     @app.post("/v1/generate", response_model=GenerateResponse, dependencies=[Depends(require_token)])
     def generate(req: GenerateRequest) -> GenerateResponse:
-        hits = _retrieve(req.query, req.allowed_course_ids, req.allowed_document_ids,
-                         req.target_skill, req.top_k)
+        hits = rerank_for_skill(_retrieve(req.query, req.allowed_course_ids, req.allowed_document_ids,
+                                          req.target_skill, req.top_k * OVERFETCH), req.target_skill, req.top_k)
         docs = [{"doc_id": h["doc_id"], "text": h["text"], "skill_tag": h.get("skill_code"),
                  "course_id": h["course_id"]} for h in hits]
         tasks = [{"item_id": t.item_id, "skill_tag": t.skill_tag, "statement": t.statement,
