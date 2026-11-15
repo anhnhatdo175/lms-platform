@@ -28,6 +28,11 @@ public interface SessionStore {
     /** PROCESSING -> PENDING, auto_retry_count + 1, đặt next_retry_at. */
     boolean requeue(long sessionId, int attempt, SessionErrorCode code, String message, Instant nextRetryAt);
 
+    /** Gia hạn lease khi worker còn giữ đúng {@code attempt}; false nghĩa là lease đã mất. */
+    default boolean extendLease(long sessionId, int attempt, Instant leaseExpiresAt) {
+        return true;
+    }
+
     /** FAILED -> PENDING nếu còn lượt retry thủ công; đặt lại auto_retry_count, giữ last_error_*. */
     boolean manualRetry(long sessionId, int maxManualRetries);
 }

@@ -49,6 +49,14 @@ public interface AdaptiveTaskSessionRepository extends JpaRepository<AdaptiveTas
     @Transactional
     @Modifying(flushAutomatically = true, clearAutomatically = true)
     @Query("""
+            UPDATE AdaptiveTaskSession s SET s.leaseExpiresAt = :lease
+            WHERE s.id = :id AND s.status = com.example.lms.ai.SessionStatus.PROCESSING AND s.attemptCount = :attempt
+            """)
+    int extendLease(long id, int attempt, Instant lease);
+
+    @Transactional
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query("""
             UPDATE AdaptiveTaskSession s
             SET s.status = com.example.lms.ai.SessionStatus.SUCCEEDED, s.completedAt = :now, s.leaseExpiresAt = NULL,
                 s.nextRetryAt = NULL, s.errorCode = NULL, s.pipelineVersion = :pipeline, s.retrievalTraceJson = :trace

@@ -57,10 +57,28 @@ public class SessionProcessor {
         }
     }
 
+    /** Lease đã chuyển cho worker khác giữa chừng: dừng, không ghi gì thêm. */
+    public static final class LeaseLost extends RuntimeException {
+
+        LeaseLost() {
+            super("lease lost", null, false, false);
+        }
+    }
+
     void process(SessionSnapshot session) {
         SessionTaskProducer.Result result;
+        Runnable heartbeat = () -> {
+            if (!store.extendLease(session.id(), session.attemptCount(),
+                    clock.instant().plus(SessionStateMachine.LEASE))) {
+                throw new LeaseLost();
+            }
+        };
         try {
-            result = producer.produce(session);
+            result = producer.produce(session, heartbeat);
+        } catch (LeaseLost lost) {
+            log.warn("session {} attempt {} lost its lease while generating; stopped", session.id(),
+                    session.attemptCount());
+            return;
         } catch (SessionFailure failure) {
             handleFailure(session, failure.code(), failure.getMessage());
             return;

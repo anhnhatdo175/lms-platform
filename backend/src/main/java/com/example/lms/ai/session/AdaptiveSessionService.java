@@ -12,7 +12,9 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import com.example.lms.ai.AdaptiveGeneratedTask;
 import com.example.lms.ai.AdaptiveGeneratedTaskRepository;
@@ -51,10 +53,12 @@ public class AdaptiveSessionService {
     private final EnrollmentAccessService enrollments;
     private final CourseQueryService courses;
     private final Clock clock;
+    private final TransactionTemplate tx;
 
     public AdaptiveSessionService(AdaptiveTaskSessionRepository sessions, AdaptiveGeneratedTaskRepository tasks,
             AdaptivePracticeConfigRepository configs, AiKnowledgeDocumentRepository documents, SessionStore store,
-            EnrollmentAccessService enrollments, CourseQueryService courses, Clock clock) {
+            EnrollmentAccessService enrollments, CourseQueryService courses, Clock clock,
+            PlatformTransactionManager transactionManager) {
         this.sessions = sessions;
         this.tasks = tasks;
         this.configs = configs;
@@ -63,6 +67,7 @@ public class AdaptiveSessionService {
         this.enrollments = enrollments;
         this.courses = courses;
         this.clock = clock;
+        this.tx = new TransactionTemplate(transactionManager);
     }
 
     @Transactional(readOnly = true)
@@ -81,10 +86,23 @@ public class AdaptiveSessionService {
                 c.getMaxHintsPerTask());
     }
 
-    @Transactional
+    /**
+     * Hai yêu cầu cùng clientRequestId đồng thời: UNIQUE(student_id, client_request_id) chọn một người thắng; bên thua
+     * đọc lại phiên trong transaction MỚI (transaction cũ đã rollback-only sau lỗi flush).
+     */
     public Created create(long studentId, CreateRequest request) {
         validate(request);
         String requestId = UUID.fromString(request.clientRequestId()).toString();
+        try {
+            return tx.execute(status -> doCreate(studentId, request, requestId));
+        } catch (DataIntegrityViolationException race) {
+            return tx.execute(status -> sessions.findByStudentIdAndClientRequestId(studentId, requestId)
+                    .map(winner -> new Created(sameRequestOrConflict(winner, request), false))
+                    .orElseThrow(() -> race));
+        }
+    }
+
+    private Created doCreate(long studentId, CreateRequest request, String requestId) {
         Optional<AdaptiveTaskSession> existing = sessions.findByStudentIdAndClientRequestId(studentId, requestId);
         if (existing.isPresent()) {
             return new Created(sameRequestOrConflict(existing.get(), request), false);
@@ -113,14 +131,7 @@ public class AdaptiveSessionService {
         session.setConstraintsJson(constraintsSnapshot(config, allowedSkills, allowedTypes));
         session.setRequestedTopicsJson(JsonSupport.toJson(topics));
         session.setRequestedTaskTypesJson(JsonSupport.toJson(types.stream().map(Enum::name).toList()));
-        try {
-            sessions.saveAndFlush(session);
-        } catch (DataIntegrityViolationException race) {
-            // Hai yêu cầu cùng clientRequestId đồng thời: UNIQUE(student_id, client_request_id) chọn một người thắng.
-            AdaptiveTaskSession winner = sessions.findByStudentIdAndClientRequestId(studentId, requestId)
-                    .orElseThrow(() -> race);
-            return new Created(sameRequestOrConflict(winner, request), false);
-        }
+        sessions.saveAndFlush(session);
         return new Created(view(session), true);
     }
 

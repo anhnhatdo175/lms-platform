@@ -66,6 +66,16 @@ class InMemorySessionStore implements SessionStore {
     }
 
     @Override
+    public boolean extendLease(long id, int attempt, Instant leaseExpiresAt) {
+        Row r = rows.get((int) id - 1);
+        if (!fenced(r, attempt)) {
+            return false;
+        }
+        r.leaseExpiresAt = leaseExpiresAt;
+        return true;
+    }
+
+    @Override
     public boolean complete(long id, int attempt, List<TaskDraft> tasks, String pipelineVersion, String trace,
             Instant now) {
         Row r = find(id);

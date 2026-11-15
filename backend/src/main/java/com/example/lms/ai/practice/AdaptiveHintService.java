@@ -7,7 +7,8 @@ import java.util.Optional;
 
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import com.example.lms.ai.AdaptiveGeneratedTask;
 import com.example.lms.ai.AdaptiveGeneratedTaskRepository;
@@ -41,21 +42,38 @@ public class AdaptiveHintService {
     private final AdaptiveTaskHintEventRepository events;
     private final EnrollmentAccessService enrollments;
     private final Clock clock;
+    private final TransactionTemplate tx;
 
     public AdaptiveHintService(AdaptiveGeneratedTaskRepository tasks, AdaptiveTaskSessionRepository sessions,
             AdaptiveTaskAttemptRepository attempts, AdaptiveTaskHintEventRepository events,
-            EnrollmentAccessService enrollments, Clock clock) {
+            EnrollmentAccessService enrollments, Clock clock, PlatformTransactionManager transactionManager) {
         this.tasks = tasks;
         this.sessions = sessions;
         this.attempts = attempts;
         this.events = events;
         this.enrollments = enrollments;
         this.clock = clock;
+        this.tx = new TransactionTemplate(transactionManager);
     }
 
-    @Transactional
+    /** Lỗi UNIQUE khi hai yêu cầu đồng thời được xử lý trong transaction MỚI (transaction cũ đã rollback-only). */
     public HintView request(long studentId, long taskId, String idempotencyKey) {
         String key = HintPolicy.validateKey(idempotencyKey);
+        try {
+            return tx.execute(status -> doRequest(studentId, taskId, key));
+        } catch (DataIntegrityViolationException race) {
+            return tx.execute(status -> {
+                AdaptiveGeneratedTask task = tasks.findById(taskId)
+                        .orElseThrow(() -> BusinessException.notFound("Task"));
+                return events.findByStudentIdAndIdempotencyKey(studentId, key)
+                        .map(winner -> replayed(winner, task, studentId))
+                        .orElseThrow(() -> new BusinessException(ErrorCode.CONFLICT,
+                                "Concurrent hint request, please retry"));
+            });
+        }
+    }
+
+    private HintView doRequest(long studentId, long taskId, String key) {
         AdaptiveGeneratedTask task = tasks.findById(taskId).orElseThrow(() -> BusinessException.notFound("Task"));
 
         Optional<AdaptiveTaskHintEvent> replay = events.findByStudentIdAndIdempotencyKey(studentId, key);
@@ -82,16 +100,7 @@ public class AdaptiveHintService {
         int max = ((Number) constraints.getOrDefault("maxHintsPerTask", 3)).intValue();
         long used = events.countByTaskIdAndStudentId(taskId, studentId);
         int index = HintPolicy.nextIndex(steps, max, used);
-        try {
-            events.saveAndFlush(AdaptiveTaskHintEvent.create(taskId, studentId, key, index, clock.instant()));
-        } catch (DataIntegrityViolationException race) {
-            // Yêu cầu song song: cùng key thì phát lại, khác key thì báo xung đột để client gọi lại.
-            Optional<AdaptiveTaskHintEvent> winner = events.findByStudentIdAndIdempotencyKey(studentId, key);
-            if (winner.isPresent()) {
-                return replayed(winner.get(), task, studentId);
-            }
-            throw new BusinessException(ErrorCode.CONFLICT, "Concurrent hint request, please retry");
-        }
+        events.saveAndFlush(AdaptiveTaskHintEvent.create(taskId, studentId, key, index, clock.instant()));
         int usedNow = index;
         return new HintView(taskId, index, steps.get(index - 1), usedNow,
                 HintPolicy.remaining(steps, max, usedNow), false);

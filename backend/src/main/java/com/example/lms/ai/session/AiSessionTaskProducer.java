@@ -37,6 +37,12 @@ public class AiSessionTaskProducer implements SessionTaskProducer {
 
     @Override
     public Result produce(SessionSnapshot session) {
+        return produce(session, () -> {
+        });
+    }
+
+    @Override
+    public Result produce(SessionSnapshot session, Runnable heartbeat) {
         Map<String, Object> constraints = JsonSupport.object(session.constraintsJson());
         List<String> allowedSkills = JsonSupport.stringsOf(constraints.get("allowedSkills"));
         List<String> requestedTopics = JsonSupport.stringList(session.requestedTopicsJson());
@@ -80,6 +86,7 @@ public class AiSessionTaskProducer implements SessionTaskProducer {
             Difficulty difficulty = ZpdPolicy.target(mastered, evidence, min, max);
 
             AiServiceClient.GenerateOutcome outcome = callAi(session, documents, skill, difficulty, mastered, evidence);
+            heartbeat.run();
             backend = outcome.llmBackend();
             if (!outcome.sufficient()) {
                 throw new SessionFailure(SessionErrorCode.INSUFFICIENT_EVIDENCE, "Not enough evidence for " + skill);

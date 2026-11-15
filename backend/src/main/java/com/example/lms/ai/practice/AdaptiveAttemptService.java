@@ -9,7 +9,9 @@ import java.util.UUID;
 
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import com.example.lms.ai.AdaptiveGeneratedTask;
 import com.example.lms.ai.AdaptiveGeneratedTaskRepository;
@@ -56,11 +58,13 @@ public class AdaptiveAttemptService {
     private final EnrollmentAccessService enrollments;
     private final AdaptiveSessionService sessionViews;
     private final Clock clock;
+    private final TransactionTemplate tx;
 
     public AdaptiveAttemptService(AdaptiveGeneratedTaskRepository tasks, AdaptiveTaskSessionRepository sessions,
             AdaptiveTaskAttemptRepository attempts, AdaptiveTaskHintEventRepository hints,
             LearningInteractionRepository interactions, LearnerProfileRepository profiles, ProfileUpdater updater,
-            EnrollmentAccessService enrollments, AdaptiveSessionService sessionViews, Clock clock) {
+            EnrollmentAccessService enrollments, AdaptiveSessionService sessionViews, Clock clock,
+            PlatformTransactionManager transactionManager) {
         this.tasks = tasks;
         this.sessions = sessions;
         this.attempts = attempts;
@@ -71,12 +75,27 @@ public class AdaptiveAttemptService {
         this.enrollments = enrollments;
         this.sessionViews = sessionViews;
         this.clock = clock;
+        this.tx = new TransactionTemplate(transactionManager);
     }
 
-    @Transactional
+    /**
+     * Hai yêu cầu đồng thời bị UNIQUE(student, client_event_id) hoặc UNIQUE(task, student) chặn ở lúc flush. Transaction
+     * đó đã hỏng (rollback-only) nên kết quả trùng được đọc lại trong một transaction MỚI, không bắt lỗi tại chỗ.
+     */
     public Submitted submit(long studentId, long taskId, SubmitRequest request) {
         String text = validate(request);
         String eventId = UUID.fromString(request.clientEventId()).toString();
+        try {
+            return tx.execute(status -> doSubmit(studentId, taskId, request, text, eventId));
+        } catch (DataIntegrityViolationException race) {
+            return tx.execute(status -> attempts.findByStudentIdAndClientEventId(studentId, eventId)
+                    .map(winner -> new Submitted(duplicate(winner, taskId), false))
+                    .orElseThrow(() -> new BusinessException(ErrorCode.AI_TASK_ALREADY_ATTEMPTED,
+                            "Task was already attempted")));
+        }
+    }
+
+    private Submitted doSubmit(long studentId, long taskId, SubmitRequest request, String text, String eventId) {
 
         Optional<AdaptiveTaskAttempt> sameEvent = attempts.findByStudentIdAndClientEventId(studentId, eventId);
         if (sameEvent.isPresent()) {
@@ -116,19 +135,10 @@ public class AdaptiveAttemptService {
         } else {
             attempt.setFeedbackText("Câu trả lời đã được ghi nhận, cần giáo viên xem lại.");
         }
-        try {
-            attempts.saveAndFlush(attempt);
-        } catch (DataIntegrityViolationException race) {
-            // Hai yêu cầu đồng thời: UNIQUE(student, client_event_id) hoặc UNIQUE(task, student) chọn một người thắng.
-            Optional<AdaptiveTaskAttempt> winner = attempts.findByStudentIdAndClientEventId(studentId, eventId);
-            if (winner.isPresent()) {
-                return new Submitted(duplicate(winner.get(), taskId), false);
-            }
-            throw new BusinessException(ErrorCode.AI_TASK_ALREADY_ATTEMPTED, "Task was already attempted");
-        }
+        attempts.saveAndFlush(attempt);
 
-        Integer before = profiles.findByStudentId(studentId).map(p -> p.getProfileVersion()).orElse(null);
-        Integer after = before;
+        Integer before = null;
+        Integer after = null;
         boolean updated = false;
         if (grade.gradable()) {
             LearningInteraction i = LearningInteraction.create(studentId, InteractionItemType.ADAPTIVE_TASK, taskId,
@@ -143,11 +153,16 @@ public class AdaptiveAttemptService {
             i.setResponseTimeMs(request.responseTimeMs());
             i.setHintsUsed(hintsUsed);
             interactions.saveAndFlush(i);
-            updater.apply(i);
+            ProfileUpdater.Applied applied = updater.apply(i);
             attempt.setInteractionId(i.getId());
             attempts.save(attempt);
-            after = profiles.findByStudentId(studentId).map(p -> p.getProfileVersion()).orElse(null);
-            updated = true;
+            before = applied.versionBefore();
+            after = applied.versionAfter();
+            updated = applied.applied();
+        } else {
+            // Không tự chấm được: hồ sơ không đổi, báo phiên bản hiện tại cho cả hai trường.
+            before = profiles.findByStudentId(studentId).map(p -> p.getProfileVersion()).orElse(null);
+            after = before;
         }
         return new Submitted(result(attempt, task, updated, before, after, false), true);
     }

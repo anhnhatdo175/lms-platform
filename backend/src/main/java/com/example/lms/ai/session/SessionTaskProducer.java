@@ -7,6 +7,14 @@ public interface SessionTaskProducer {
 
     Result produce(SessionSnapshot session);
 
+    /**
+     * Như {@link #produce(SessionSnapshot)}, nhưng gọi {@code heartbeat} sau mỗi bước dài (mỗi lần gọi AI) để worker gia
+     * hạn lease. {@code heartbeat} ném {@link SessionProcessor.LeaseLost} khi lease đã mất, để dừng sớm.
+     */
+    default Result produce(SessionSnapshot session, Runnable heartbeat) {
+        return produce(session);
+    }
+
     record Result(List<TaskDraft> tasks, String pipelineVersion, String retrievalTraceJson) {
         public Result {
             tasks = List.copyOf(tasks);

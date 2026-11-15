@@ -5,9 +5,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
@@ -34,8 +31,6 @@ import com.example.lms.exam.ExamRepository;
  */
 @Service
 public class LearningInteractionRecorderImpl implements LearningInteractionRecorder {
-
-    private static final Logger log = LoggerFactory.getLogger(LearningInteractionRecorderImpl.class);
 
     private final ExamAttemptRepository attempts;
     private final ExamRepository exams;
@@ -94,13 +89,9 @@ public class LearningInteractionRecorderImpl implements LearningInteractionRecor
             i.setMaxScore(q.getMaximumScore());
             i.setCorrect(answer.getCorrect());
             i.setHintsUsed(0);
-            try {
-                interactions.saveAndFlush(i);
-            } catch (DataIntegrityViolationException duplicate) {
-                // Ghi đồng thời cùng event_key: bản kia thắng, không ghi trùng.
-                log.debug("interaction {} already recorded", eventKey);
-                continue;
-            }
+            // Ghi đồng thời cùng event_key (forwarder + job bù): UNIQUE(event_key) làm transaction này rollback, bản kia
+            // đã ghi đủ; caller chỉ ghi log. Không bắt lỗi tại chỗ vì transaction đã rollback-only.
+            interactions.saveAndFlush(i);
             updater.apply(i);
         }
     }
