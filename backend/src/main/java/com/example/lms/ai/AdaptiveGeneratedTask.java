@@ -103,6 +103,18 @@ public class AdaptiveGeneratedTask {
     public AdaptiveGeneratedTask() {
     }
 
+    /** Task mới của một phiên; các trường bất biến (vị trí, nguồn, thời điểm tạo) chỉ đặt được qua factory này. */
+    public static AdaptiveGeneratedTask create(long sessionId, int position, TaskOrigin origin, Long sourceQuestionId,
+            Instant createdAt) {
+        AdaptiveGeneratedTask t = new AdaptiveGeneratedTask();
+        t.sessionId = sessionId;
+        t.position = position;
+        t.origin = origin;
+        t.sourceQuestionId = sourceQuestionId;
+        t.createdAt = createdAt;
+        return t;
+    }
+
     public Long getId() {
         return id;
     }

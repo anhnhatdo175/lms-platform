@@ -59,3 +59,13 @@ payment.sepay.api-key=YOUR_SEPAY_WEBHOOK_API_KEY
 payment.sepay.account-number=YOUR_BANK_ACCOUNT_NUMBER
 payment.sepay.bank-code=YOUR_BANK_SHORT_CODE
 payment.sepay.qr-image-base-url=https://vietqr.app/img
+
+# --- AI service (Người C) ---
+ai.service.base-url=${AI_SERVICE_URL:http://localhost:8000}
+# Token nội bộ gửi trong header X-Internal-Token; để trống nếu ai-service không bật token.
+ai.service.token=${AI_SERVICE_TOKEN:}
+ai.service.connect-timeout=PT3S
+ai.service.read-timeout=PT60S
+# Worker xử lý phiên nhiệm vụ thích ứng (lease 5 phút, retry tự động tối đa 3 lần).
+ai.session.worker-enabled=true
+ai.session.worker-delay=PT2S

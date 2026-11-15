@@ -103,6 +103,19 @@ public class AdaptiveTaskSession {
     public AdaptiveTaskSession() {
     }
 
+    /** Phiên mới ở trạng thái PENDING; các trường bất biến chỉ đặt được qua factory này. */
+    public static AdaptiveTaskSession create(long studentId, long courseId, Long lessonId, String clientRequestId,
+            Instant now) {
+        AdaptiveTaskSession s = new AdaptiveTaskSession();
+        s.studentId = studentId;
+        s.courseId = courseId;
+        s.lessonId = lessonId;
+        s.clientRequestId = clientRequestId;
+        s.status = SessionStatus.PENDING;
+        s.createdAt = now;
+        return s;
+    }
+
     public Long getId() {
         return id;
     }

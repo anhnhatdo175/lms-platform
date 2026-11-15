@@ -22,4 +22,21 @@ public interface AiKnowledgeDocumentRepository extends JpaRepository<AiKnowledge
             ORDER BY d.createdAt
             """)
     List<AiKnowledgeDocument> findRunnable(Instant now, Pageable pageable);
+
+    /** Tài liệu truy xuất được trong cả Course (retrieval không giới hạn Lesson). */
+    @Query("""
+            SELECT d.id FROM AiKnowledgeDocument d
+            WHERE d.courseId = :courseId AND d.deletedAt IS NULL
+              AND d.indexStatus = com.example.lms.ai.IndexStatus.READY
+            """)
+    List<Long> findReadyIdsByCourse(long courseId);
+
+    /** Tài liệu của Course ở mức Course (không gắn Lesson) hoặc đúng Lesson được hỏi. */
+    @Query("""
+            SELECT d.id FROM AiKnowledgeDocument d
+            WHERE d.courseId = :courseId AND d.deletedAt IS NULL
+              AND d.indexStatus = com.example.lms.ai.IndexStatus.READY
+              AND (d.lessonId IS NULL OR d.lessonId = :lessonId)
+            """)
+    List<Long> findReadyIdsByCourseAndLesson(long courseId, long lessonId);
 }
