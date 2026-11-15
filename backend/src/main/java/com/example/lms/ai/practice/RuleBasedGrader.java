@@ -48,7 +48,8 @@ public final class RuleBasedGrader {
     }
 
     static String normalize(String s) {
-        String t = Normalizer.normalize(s, Normalizer.Form.NFC).strip().replaceAll("\\s+", " ");
+        String t = Normalizer.normalize(s, Normalizer.Form.NFC).strip().replaceAll("\\s+", " ")
+                .replaceAll(" ?/ ?", "/"); // "5 / 7" = "5/7"
         return t.toLowerCase(Locale.ROOT);
     }
 
