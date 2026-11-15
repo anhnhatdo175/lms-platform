@@ -182,6 +182,50 @@ class SessionStateMachineTest {
         assertEquals(3, row.autoRetryCount);
     }
 
+    /** Producer gọi heartbeat sau mỗi task; mỗi task "tốn" 4 phút, tổng dài hơn một lease 5 phút. */
+    private SessionTaskProducer slow(int tasks) {
+        return new SessionTaskProducer() {
+            @Override
+            public Result produce(SessionSnapshot s) {
+                throw new AssertionError("processor must use the heartbeat overload");
+            }
+
+            @Override
+            public Result produce(SessionSnapshot s, Runnable heartbeat) {
+                List<TaskDraft> drafts = new java.util.ArrayList<>();
+                for (int i = 1; i <= tasks; i++) {
+                    clock.advance(Duration.ofMinutes(4));
+                    heartbeat.run();
+                    drafts.add(draft(i));
+                }
+                return new Result(drafts, "slow", "{}");
+            }
+        };
+    }
+
+    @Test
+    void heartbeatKeepsLongSessionAlive() {
+        var row = store.add();
+        assertTrue(processor(slow(3), "A").runOnce());
+        assertEquals(SessionStatus.SUCCEEDED, row.status);
+        assertEquals(3, row.tasks.size());
+        assertEquals(1, row.attemptCount);
+    }
+
+    @Test
+    void heartbeatStopsWorkerThatLostItsLease() {
+        var row = store.add();
+        SessionSnapshot a = store.claimNext(clock.instant(), clock.instant().plus(SessionStateMachine.LEASE), "A")
+                .orElseThrow();
+        // lease đã chuyển giao (attempt mới) trước khi A kịp gia hạn
+        row.status = SessionStatus.PENDING;
+        store.claimNext(clock.instant(), clock.instant().plus(SessionStateMachine.LEASE), "B").orElseThrow();
+        processor(slow(3), "A").process(a);
+        assertEquals(0, row.taskWrites);
+        assertEquals(SessionStatus.PROCESSING, row.status);
+        assertEquals(2, row.attemptCount);
+    }
+
     @Test
     void lateWorkerAfterLeaseHandoverCannotOverwriteOrDuplicate() {
         var row = store.add();

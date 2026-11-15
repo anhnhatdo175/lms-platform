@@ -71,6 +71,12 @@ public class JpaSessionStore implements SessionStore {
 
     @Override
     @Transactional
+    public boolean extendLease(long sessionId, int attempt, Instant leaseExpiresAt) {
+        return sessions.extendLease(sessionId, attempt, leaseExpiresAt) == 1;
+    }
+
+    @Override
+    @Transactional
     public boolean manualRetry(long sessionId, int maxManualRetries) {
         return sessions.markManualRetry(sessionId, maxManualRetries) == 1;
     }

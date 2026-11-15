@@ -1,17 +1,27 @@
 package com.example.lms.ai;
 
+import java.time.Instant;
 import java.util.List;
 
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.transaction.annotation.Transactional;
 
 public interface LearningInteractionRepository extends JpaRepository<LearningInteraction, Long> {
 
     boolean existsByEventKey(String eventKey);
 
     /** Tương tác chưa dùng để cập nhật hồ sơ, theo thứ tự thời gian (job xử lý lại, ERD 17.8). */
-    List<LearningInteraction> findByProcessedAtIsNullOrderByOccurredAt(Pageable pageable);
+    @Query("SELECT i.id FROM LearningInteraction i WHERE i.processedAt IS NULL ORDER BY i.occurredAt, i.id")
+    List<Long> findPendingIds(Pageable pageable);
+
+    /** Đánh dấu đã áp dụng; 0 dòng nghĩa là luồng khác đã áp dụng trước (chống áp dụng EMA hai lần). */
+    @Transactional
+    @Modifying(flushAutomatically = true)
+    @Query("UPDATE LearningInteraction i SET i.processedAt = :now WHERE i.id = :id AND i.processedAt IS NULL")
+    int markProcessed(long id, Instant now);
 
     List<LearningInteraction> findByStudentIdOrderByOccurredAtDesc(long studentId, Pageable pageable);
 
@@ -25,7 +35,7 @@ public interface LearningInteractionRepository extends JpaRepository<LearningInt
               AND NOT EXISTS (SELECT 1 FROM LearningInteraction i WHERE i.sourceAttemptId = a.id)
             ORDER BY a.gradedAt DESC
             """)
-    List<Long> findGradedAttemptIdsWithoutInteractions(java.time.Instant since, Pageable pageable);
+    List<Long> findGradedAttemptIdsWithoutInteractions(Instant since, Pageable pageable);
 
     /** Kỹ năng học viên đã có tương tác trong một Course (phạm vi Teacher được xem). */
     @Query("""

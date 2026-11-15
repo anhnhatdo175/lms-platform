@@ -19,7 +19,8 @@ class AiRepositoryTransactionTest {
     @Test
     void everyModifyingQueryOpensItsOwnTransaction() {
         List<String> missing = new ArrayList<>();
-        for (Class<?> repo : List.of(AiKnowledgeDocumentRepository.class, AdaptiveTaskSessionRepository.class)) {
+        for (Class<?> repo : List.of(AiKnowledgeDocumentRepository.class, AdaptiveTaskSessionRepository.class,
+                LearnerProfileRepository.class, LearningInteractionRepository.class)) {
             for (Method m : repo.getDeclaredMethods()) {
                 if (m.isAnnotationPresent(Modifying.class) && !m.isAnnotationPresent(Transactional.class)) {
                     missing.add(repo.getSimpleName() + "." + m.getName());
