@@ -222,3 +222,21 @@ def test_api_internal_token(client, monkeypatch):
     assert client.post("/v1/retrieve", json=body).status_code == 401
     assert client.post("/v1/retrieve", json=body, headers={"X-Internal-Token": "s3cret"}).status_code == 200
     assert client.get("/health").status_code == 200
+
+
+# ---------- answer-leak regex (answer followed by sentence punctuation) ----------
+def test_hint_revealing_answer_before_a_period_is_rejected(fake):
+    import json as _json
+    context = _context()
+    good = LLMGenerator().generate(context)
+    leaky = _json.loads(_json.dumps(good))
+    leaky["task"]["hints"] = [f"Đáp án là {leaky['task']['answer_key']}."]
+    leaky["safety"]["contains_final_answer"] = False
+    calls = {"n": 0}
+
+    def llm(prompt, **kwargs):
+        calls["n"] += 1
+        return _json.dumps(leaky if calls["n"] <= 2 else good)
+
+    with pytest.raises(ValueError, match="final answer"):
+        LLMGenerator(llm).generate(context)

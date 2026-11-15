@@ -128,7 +128,7 @@ class LLMGenerator:
                             *(str(hint) for hint in task.get("hints", [])),
                         ])
                         answer_pattern = re.compile(
-                            rf"(?<![\w.]){re.escape(answer)}(?![\w.])", re.IGNORECASE
+                            rf"(?<!\w)(?<!\d\.){re.escape(answer)}(?!\w)(?!\.\d)", re.IGNORECASE
                         ) if answer else None
                         safety["contains_final_answer"] = bool(
                             answer_pattern and answer_pattern.search(visible_text)
