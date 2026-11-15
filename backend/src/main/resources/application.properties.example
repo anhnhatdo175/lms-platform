@@ -69,3 +69,7 @@ ai.service.read-timeout=PT60S
 # Worker xử lý phiên nhiệm vụ thích ứng (lease 5 phút, retry tự động tối đa 3 lần).
 ai.session.worker-enabled=true
 ai.session.worker-delay=PT2S
+ai.ingestion.worker-enabled=true
+ai.ingestion.worker-delay=PT3S
+ai.profile.reprocess-enabled=true
+ai.profile.reprocess-delay=PT5M

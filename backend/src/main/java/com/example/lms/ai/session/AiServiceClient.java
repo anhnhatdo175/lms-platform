@@ -12,6 +12,19 @@ public interface AiServiceClient {
     /** @throws AiServiceException khi dịch vụ AI không khả dụng hoặc trả đầu ra không hợp lệ */
     GenerateOutcome generate(GenerateCall call);
 
+    /** Lập chỉ mục văn bản của một tài liệu; trả số chunk đã index. */
+    default int ingest(IngestCall call) {
+        throw new AiServiceException(AiServiceException.Kind.UNAVAILABLE, "ingest is not supported by this client");
+    }
+
+    /** Xóa mọi vector của tài liệu (idempotent). */
+    default void deleteDocument(long documentId) {
+        throw new AiServiceException(AiServiceException.Kind.UNAVAILABLE, "delete is not supported by this client");
+    }
+
+    record IngestCall(long documentId, long courseId, Long lessonId, String title, String text) {
+    }
+
     record GenerateCall(String query, List<Long> allowedCourseIds, List<Long> allowedDocumentIds, String targetSkill,
             double targetDifficulty, String language, Map<String, Object> learnerProfile) {
     }

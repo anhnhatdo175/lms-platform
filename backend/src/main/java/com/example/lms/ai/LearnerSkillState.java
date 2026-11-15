@@ -48,6 +48,17 @@ public class LearnerSkillState {
     public LearnerSkillState() {
     }
 
+    /** Kỹ năng mới: chưa có bằng chứng, mastery trung tính 0.5 (cold start, BR-AI-13). */
+    public static LearnerSkillState create(long studentId, String skillCode, Instant now) {
+        LearnerSkillState s = new LearnerSkillState();
+        s.studentId = studentId;
+        s.skillCode = skillCode;
+        s.masteryScore = new java.math.BigDecimal("0.50000");
+        s.evidenceCount = 0;
+        s.updatedAt = now;
+        return s;
+    }
+
     public Long getId() {
         return id;
     }

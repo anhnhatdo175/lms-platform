@@ -97,6 +97,23 @@ public class AiKnowledgeDocument {
     public AiKnowledgeDocument() {
     }
 
+    /** Tài liệu mới ở trạng thái PENDING, chờ worker ingestion. */
+    public static AiKnowledgeDocument create(Long courseId, Long lessonId, String title, DocumentSourceType type,
+            String sourceText, long createdBy, Instant now) {
+        AiKnowledgeDocument d = new AiKnowledgeDocument();
+        d.courseId = courseId;
+        d.lessonId = lessonId;
+        d.title = title;
+        d.sourceType = type;
+        d.sourceText = sourceText;
+        d.createdBy = createdBy;
+        d.indexStatus = IndexStatus.PENDING;
+        d.indexVersion = 1;
+        d.createdAt = now;
+        d.updatedAt = now;
+        return d;
+    }
+
     public Long getId() {
         return id;
     }
