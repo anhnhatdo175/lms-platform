@@ -2,7 +2,6 @@ package com.example.lms.ai.session;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -16,7 +15,13 @@ import com.example.lms.ai.ValidationStatus;
 import com.example.lms.contract.question.Difficulty;
 
 /**
- * Tạo nhiệm vụ GENERATED (SHORT_ANSWER) qua AI service. Độ khó theo ZPD ({@link ZpdPolicy}), kỹ năng yếu nhất trước.
+ * Tạo nhiệm vụ GENERATED (SHORT_ANSWER) qua AI service theo hồ sơ người học:
+ * <ol>
+ * <li>xếp hạng kỹ năng bằng Score_ZPD ({@link SkillPlanner}); độ khó sinh = M + δ trong khoảng Teacher;</li>
+ * <li>dựng câu truy vấn theo hồ sơ ({@link ProfileQuery}): kỹ năng + đề mẫu của Course + trọng tâm theo mức thành
+ * thạo;</li>
+ * <li>gửi kèm hồ sơ kỹ năng của phiên; ghi lý do xếp hạng vào {@code retrieval_trace_json}.</li>
+ * </ol>
  * Chọn nhiệm vụ BANK / MULTIPLE_CHOICE thuộc gói Recommender, chưa có ở đây.
  */
 @Component
@@ -26,13 +31,17 @@ public class AiSessionTaskProducer implements SessionTaskProducer {
     private final TaskVerifier verifier;
     private final LearnerContextProvider learners;
     private final KnowledgeScopeProvider knowledge;
+    private final SkillExamplesProvider examples;
+
+    static final int EXAMPLES_PER_SKILL = 3;
 
     public AiSessionTaskProducer(AiServiceClient client, TaskVerifier verifier, LearnerContextProvider learners,
-            KnowledgeScopeProvider knowledge) {
+            KnowledgeScopeProvider knowledge, SkillExamplesProvider examples) {
         this.client = client;
         this.verifier = verifier;
         this.learners = learners;
         this.knowledge = knowledge;
+        this.examples = examples;
     }
 
     @Override
@@ -69,23 +78,24 @@ public class AiSessionTaskProducer implements SessionTaskProducer {
         }
 
         Map<String, LearnerContextProvider.SkillMastery> mastery = learners.skills(session.studentId());
-        List<String> ordered = new ArrayList<>(skills);
-        ordered.sort(Comparator.comparingDouble(s -> {
-            LearnerContextProvider.SkillMastery m = mastery.get(s);
-            return m == null ? ZpdPolicy.COLD_START_MASTERY : ZpdPolicy.effectiveMastery(m.mastery(), m.evidenceCount());
-        }));
+        List<SkillPlanner.SkillPlan> ranked = SkillPlanner.rank(skills, mastery, min, max);
+        Map<String, Object> profile = profileSnapshot(ranked);
+        Map<String, String> queries = new LinkedHashMap<>();
+        for (SkillPlanner.SkillPlan plan : ranked) {
+            queries.put(plan.skill(), ProfileQuery.build(plan,
+                    examples.examples(session.courseId(), plan.skill(), EXAMPLES_PER_SKILL)));
+        }
 
         List<TaskDraft> drafts = new ArrayList<>();
         List<Map<String, Object>> trace = new ArrayList<>();
         String backend = "unknown";
         for (int position = 1; position <= session.taskCount(); position++) {
-            String skill = ordered.get((position - 1) % ordered.size());
-            LearnerContextProvider.SkillMastery m = mastery.get(skill);
-            double mastered = m == null ? ZpdPolicy.COLD_START_MASTERY : m.mastery();
-            int evidence = m == null ? 0 : m.evidenceCount();
-            Difficulty difficulty = ZpdPolicy.target(mastered, evidence, min, max);
+            SkillPlanner.SkillPlan plan = ranked.get((position - 1) % ranked.size());
+            String skill = plan.skill();
+            Difficulty difficulty = plan.difficulty();
+            int evidence = plan.evidenceCount();
 
-            AiServiceClient.GenerateOutcome outcome = callAi(session, documents, skill, difficulty, mastered, evidence);
+            AiServiceClient.GenerateOutcome outcome = callAi(session, documents, plan, queries.get(skill), profile);
             heartbeat.run();
             backend = outcome.llmBackend();
             if (!outcome.sufficient()) {
@@ -100,27 +110,49 @@ public class AiSessionTaskProducer implements SessionTaskProducer {
             entry.put("position", position);
             entry.put("skill", skill);
             entry.put("difficulty", difficulty);
+            entry.put("query", queries.get(skill));
             entry.put("supportingDocIds", outcome.supportingDocIds());
             trace.add(entry);
         }
+        List<Map<String, Object>> ranking = new ArrayList<>();
+        for (SkillPlanner.SkillPlan p : ranked) {
+            Map<String, Object> r = new LinkedHashMap<>();
+            r.put("skill", p.skill());
+            r.put("mastery", p.mastery());
+            r.put("evidenceCount", p.evidenceCount());
+            r.put("coldStart", p.coldStart());
+            r.put("difficulty", p.difficulty());
+            r.put("delta", Math.round(p.delta() * 1000) / 1000.0);
+            r.put("zpdScore", p.zpdScore());
+            ranking.add(r);
+        }
         Map<String, Object> retrieval = new LinkedHashMap<>();
+        retrieval.put("skillRanking", ranking);
         retrieval.put("allowedDocumentIds", documents);
         retrieval.put("tasks", trace);
         return new Result(drafts, "ai-service/" + backend, JsonSupport.toJson(retrieval));
     }
 
-    private AiServiceClient.GenerateOutcome callAi(SessionSnapshot s, List<Long> documents, String skill,
-            Difficulty difficulty, double mastery, int evidence) {
-        Map<String, Object> skillState = new LinkedHashMap<>();
-        skillState.put("mastery", ZpdPolicy.effectiveMastery(mastery, evidence));
-        skillState.put("evidenceCount", evidence);
+    /** Hồ sơ gửi AI service: mastery hiệu lực của mọi kỹ năng trong phiên (không có dữ liệu định danh). */
+    static Map<String, Object> profileSnapshot(List<SkillPlanner.SkillPlan> ranked) {
         Map<String, Object> skillsMap = new LinkedHashMap<>();
-        skillsMap.put(skill, skillState);
+        for (SkillPlanner.SkillPlan p : ranked) {
+            Map<String, Object> state = new LinkedHashMap<>();
+            state.put("mastery", p.mastery());
+            state.put("evidenceCount", p.evidenceCount());
+            state.put("coldStart", p.coldStart());
+            skillsMap.put(p.skill(), state);
+        }
         Map<String, Object> profile = new LinkedHashMap<>();
         profile.put("skills", skillsMap);
+        return profile;
+    }
+
+    private AiServiceClient.GenerateOutcome callAi(SessionSnapshot s, List<Long> documents,
+            SkillPlanner.SkillPlan plan, String query, Map<String, Object> profile) {
         try {
-            return client.generate(new AiServiceClient.GenerateCall(skill, List.of(s.courseId()), documents, skill,
-                    ZpdPolicy.numeric(difficulty), "vi", profile));
+            return client.generate(new AiServiceClient.GenerateCall(query, List.of(s.courseId()), documents,
+                    plan.skill(), ZpdPolicy.numeric(plan.difficulty()), "vi", profile));
         } catch (AiServiceClient.AiServiceException e) {
             SessionErrorCode code = e.kind() == AiServiceClient.AiServiceException.Kind.INVALID_OUTPUT
                     ? SessionErrorCode.LLM_INVALID_OUTPUT : SessionErrorCode.AI_UNAVAILABLE;
