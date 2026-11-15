@@ -8,7 +8,12 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.transaction.annotation.Transactional;
 
+/**
+ * Các UPDATE {@code @Modifying} tự mở transaction ({@code @Transactional} trên từng method) vì
+ * {@code DocumentIngestionService.process} cố ý chạy ngoài transaction để không giữ transaction quanh lời gọi HTTP.
+ */
 public interface AiKnowledgeDocumentRepository extends JpaRepository<AiKnowledgeDocument, Long> {
 
     Page<AiKnowledgeDocument> findByCourseIdAndDeletedAtIsNull(long courseId, Pageable pageable);
@@ -43,6 +48,7 @@ public interface AiKnowledgeDocumentRepository extends JpaRepository<AiKnowledge
 
     // ---- ingestion: cùng quy tắc lease/fencing/retry như phiên (Spec 20A.14) ----
 
+    @Transactional
     @Modifying(flushAutomatically = true, clearAutomatically = true)
     @Query("""
             UPDATE AiKnowledgeDocument d
@@ -54,6 +60,7 @@ public interface AiKnowledgeDocumentRepository extends JpaRepository<AiKnowledge
             """)
     int claim(long id, int seenAttempt, Instant lease, Instant now);
 
+    @Transactional
     @Modifying(flushAutomatically = true, clearAutomatically = true)
     @Query("""
             UPDATE AiKnowledgeDocument d
@@ -64,6 +71,7 @@ public interface AiKnowledgeDocumentRepository extends JpaRepository<AiKnowledge
             """)
     int markReady(long id, int attempt, Instant now);
 
+    @Transactional
     @Modifying(flushAutomatically = true, clearAutomatically = true)
     @Query("""
             UPDATE AiKnowledgeDocument d
@@ -73,6 +81,7 @@ public interface AiKnowledgeDocumentRepository extends JpaRepository<AiKnowledge
             """)
     int markFailed(long id, int attempt, String message, Instant now);
 
+    @Transactional
     @Modifying(flushAutomatically = true, clearAutomatically = true)
     @Query("""
             UPDATE AiKnowledgeDocument d
@@ -83,6 +92,7 @@ public interface AiKnowledgeDocumentRepository extends JpaRepository<AiKnowledge
     int markRequeued(long id, int attempt, Instant next, String message, Instant now);
 
     /** Lưu văn bản đã trích xuất để reindex không phải đọc lại tệp; fenced theo attempt. */
+    @Transactional
     @Modifying(flushAutomatically = true, clearAutomatically = true)
     @Query("""
             UPDATE AiKnowledgeDocument d SET d.sourceText = :text, d.updatedAt = :now
@@ -103,6 +113,7 @@ public interface AiKnowledgeDocumentRepository extends JpaRepository<AiKnowledge
     Page<AiKnowledgeDocument> search(Long courseId, Long lessonId, IndexStatus status, Pageable pageable);
 
     /** Index lại: tăng index_version, về PENDING. Không áp dụng khi đang PROCESSING hoặc đã xóa. */
+    @Transactional
     @Modifying(flushAutomatically = true, clearAutomatically = true)
     @Query("""
             UPDATE AiKnowledgeDocument d

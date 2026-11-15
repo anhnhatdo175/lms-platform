@@ -74,7 +74,8 @@ def store():
     s = QdrantChunkStore(make_client(":memory:"), collection="t")
     chunks = [ChunkRecord(1, 10, 0, "cộng phân số cùng mẫu", skill_code="frac"),
               ChunkRecord(2, 20, 0, "cộng phân số khác mẫu", skill_code="frac"),
-              ChunkRecord(3, 10, 0, "hình học tam giác", skill_code="geo")]
+              ChunkRecord(3, 10, 0, "hình học tam giác", skill_code="geo"),
+              ChunkRecord(4, 10, 0, "tài liệu chung về phân số và hình học")]
     s.upsert_chunks(chunks, e.encode([c.text for c in chunks]))
     return s, e.encode_queries(["cộng phân số"])[0]
 
@@ -94,9 +95,17 @@ def test_empty_allow_list_returns_nothing(store):
 def test_document_and_skill_filters_and_delete(store):
     s, q = store
     assert {h["document_id"] for h in s.search(q, [10, 20], allowed_document_ids=[2])} == {2}
-    assert {h["skill_code"] for h in s.search(q, [10, 20], skill_code="geo")} == {"geo"}
+    assert {h["skill_code"] for h in s.search(q, [10, 20], skill_code="geo")} == {"geo", None}
     s.delete_document(1)
     assert 1 not in {h["document_id"] for h in s.search(q, [10, 20])}
+
+
+def test_skill_filter_keeps_untagged_course_material(store):
+    # Spring ingest tài liệu tri thức KHÔNG kèm skill_code; lọc kỹ năng không được loại các chunk đó.
+    s, q = store
+    hits = s.search(q, [10], skill_code="frac", top_k=10)
+    assert {h["document_id"] for h in hits} == {1, 4}
+    assert all(h["skill_code"] in ("frac", None) for h in hits)
 
 
 def test_dimension_mismatch_rejected(store):
@@ -189,6 +198,15 @@ def test_api_ingest_retrieve_generate_respects_permissions(client):
     assert gen["result"]["status"] == "ok" and all(d.startswith("1:") for d in gen["retrieved_doc_ids"])
     denied = client.post("/v1/generate", json={**GEN, "allowed_course_ids": [99]}).json()
     assert denied["result"]["status"] == "insufficient_context" and denied["retrieved_doc_ids"] == []
+
+
+def test_api_generate_works_with_documents_ingested_without_skill(client):
+    # Đúng như Spring gửi: không có skill_code. Trước đây mọi lần generate trả insufficient_context.
+    r = client.post("/v1/ingest", json={"document_id": 7, "course_id": 10,
+                                         "text": "Cộng phân số cùng mẫu: giữ mẫu, cộng tử số."})
+    assert r.status_code == 200
+    gen = client.post("/v1/generate", json={**GEN, "allowed_course_ids": [10], "allowed_document_ids": [7]}).json()
+    assert gen["result"]["status"] == "ok" and gen["retrieved_doc_ids"]
 
 
 def test_api_reingest_replaces_and_delete_removes(client):

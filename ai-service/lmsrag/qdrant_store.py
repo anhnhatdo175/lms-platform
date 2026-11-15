@@ -102,7 +102,13 @@ class QdrantChunkStore:
             must.append(models.FieldCondition(
                 key="document_id", match=models.MatchAny(any=list(allowed_document_ids))))
         if skill_code:
-            must.append(models.FieldCondition(key="skill_code", match=models.MatchValue(value=skill_code)))
+            # Lọc mềm: chunk gắn đúng kỹ năng HOẶC chunk không gắn kỹ năng (tài liệu chung của khoá học).
+            # Lọc cứng sẽ loại hết tài liệu Spring ingest, vì tài liệu tri thức không có skill_code.
+            must.append(models.Filter(should=[
+                models.FieldCondition(key="skill_code", match=models.MatchValue(value=skill_code)),
+                models.IsNullCondition(is_null=models.PayloadField(key="skill_code")),
+                models.IsEmptyCondition(is_empty=models.PayloadField(key="skill_code")),
+            ]))
         response = self.client.query_points(
             self.collection, query=np.asarray(vector, dtype="float32").reshape(-1).tolist(),
             query_filter=models.Filter(must=must), limit=top_k, with_payload=True,
