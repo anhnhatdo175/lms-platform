@@ -18,7 +18,7 @@ import com.example.lms.shared.exception.ErrorCode;
  * không đổi cách {@code ApiExceptionHandler} của A trả lỗi cho phần của A.
  */
 @RestControllerAdvice(basePackages = { "com.example.lms.commerce", "com.example.lms.payment",
-        "com.example.lms.enrollment", "com.example.lms.exam" })
+        "com.example.lms.enrollment", "com.example.lms.exam", "com.example.lms.question" })
 @Order(Ordered.HIGHEST_PRECEDENCE)
 public class BusinessExceptionHandler {
 
