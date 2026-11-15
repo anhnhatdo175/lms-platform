@@ -89,4 +89,28 @@ public interface AiKnowledgeDocumentRepository extends JpaRepository<AiKnowledge
             WHERE d.id = :id AND d.indexStatus = com.example.lms.ai.IndexStatus.PROCESSING AND d.attemptCount = :attempt
             """)
     int storeExtractedText(long id, int attempt, String text, Instant now);
+
+    boolean existsByCourseIdAndContentHashAndDeletedAtIsNull(Long courseId, String contentHash);
+
+    /** Danh sách chưa xóa, lọc tùy chọn theo course/lesson/trạng thái (Teacher luôn truyền courseId đã kiểm quyền). */
+    @Query("""
+            SELECT d FROM AiKnowledgeDocument d
+            WHERE d.deletedAt IS NULL
+              AND (:courseId IS NULL OR d.courseId = :courseId)
+              AND (:lessonId IS NULL OR d.lessonId = :lessonId)
+              AND (:status IS NULL OR d.indexStatus = :status)
+            """)
+    Page<AiKnowledgeDocument> search(Long courseId, Long lessonId, IndexStatus status, Pageable pageable);
+
+    /** Index lại: tăng index_version, về PENDING. Không áp dụng khi đang PROCESSING hoặc đã xóa. */
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query("""
+            UPDATE AiKnowledgeDocument d
+            SET d.indexStatus = com.example.lms.ai.IndexStatus.PENDING, d.indexVersion = d.indexVersion + 1,
+                d.attemptCount = 0, d.leaseExpiresAt = NULL, d.nextRetryAt = NULL, d.errorMessage = NULL,
+                d.updatedAt = :now
+            WHERE d.id = :id AND d.deletedAt IS NULL
+              AND d.indexStatus <> com.example.lms.ai.IndexStatus.PROCESSING
+            """)
+    int markReindex(long id, Instant now);
 }
