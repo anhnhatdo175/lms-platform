@@ -26,4 +26,11 @@ public interface LearningInteractionRepository extends JpaRepository<LearningInt
             ORDER BY a.gradedAt DESC
             """)
     List<Long> findGradedAttemptIdsWithoutInteractions(java.time.Instant since, Pageable pageable);
+
+    /** Kỹ năng học viên đã có tương tác trong một Course (phạm vi Teacher được xem). */
+    @Query("""
+            SELECT DISTINCT i.skillCode FROM LearningInteraction i
+            WHERE i.studentId = :studentId AND i.courseId = :courseId AND i.skillCode IS NOT NULL
+            """)
+    List<String> findSkillCodesByStudentAndCourse(long studentId, long courseId);
 }
