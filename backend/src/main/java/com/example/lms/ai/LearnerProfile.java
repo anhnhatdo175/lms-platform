@@ -64,6 +64,16 @@ public class LearnerProfile {
     public LearnerProfile() {
     }
 
+    public static LearnerProfile create(long studentId, Instant now) {
+        LearnerProfile p = new LearnerProfile();
+        p.studentId = studentId;
+        p.profileVersion = 1;
+        p.profileVectorVersion = 1;
+        p.createdAt = now;
+        p.updatedAt = now;
+        return p;
+    }
+
     public Long getId() {
         return id;
     }

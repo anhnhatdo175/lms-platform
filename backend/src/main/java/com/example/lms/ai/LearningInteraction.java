@@ -81,6 +81,18 @@ public class LearningInteraction {
     public LearningInteraction() {
     }
 
+    /** Tương tác mới, chưa xử lý; {@code eventKey} bất biến để idempotent (BR-AI-08). */
+    public static LearningInteraction create(long studentId, InteractionItemType itemType, long itemId,
+            Instant occurredAt, String eventKey) {
+        LearningInteraction i = new LearningInteraction();
+        i.studentId = studentId;
+        i.itemType = itemType;
+        i.itemId = itemId;
+        i.occurredAt = occurredAt;
+        i.eventKey = eventKey;
+        return i;
+    }
+
     public Long getId() {
         return id;
     }

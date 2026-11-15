@@ -66,6 +66,41 @@ public class HttpAiServiceClient implements AiServiceClient {
         return parse(response);
     }
 
+    @Override
+    public int ingest(IngestCall call) {
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("document_id", call.documentId());
+        body.put("course_id", call.courseId());
+        body.put("lesson_id", call.lessonId());
+        body.put("title", call.title() == null ? "" : call.title());
+        body.put("text", call.text());
+        try {
+            String response = http.post().uri("/v1/ingest").contentType(MediaType.APPLICATION_JSON)
+                    .body(JsonSupport.toJson(body)).retrieve().body(String.class);
+            Object count = JsonReader.parseObject(response).get("chunk_count");
+            return count instanceof Number n ? n.intValue() : 0;
+        } catch (RestClientResponseException e) {
+            throw new AiServiceException(e.getStatusCode().value() == 422 ? AiServiceException.Kind.INVALID_OUTPUT
+                    : AiServiceException.Kind.UNAVAILABLE, "AI service returned HTTP " + e.getStatusCode().value());
+        } catch (AiServiceException e) {
+            throw e;
+        } catch (RuntimeException e) {
+            throw new AiServiceException(AiServiceException.Kind.UNAVAILABLE, "AI service is unreachable", e);
+        }
+    }
+
+    @Override
+    public void deleteDocument(long documentId) {
+        try {
+            http.delete().uri("/v1/documents/" + documentId).retrieve().toBodilessEntity();
+        } catch (RestClientResponseException e) {
+            throw new AiServiceException(AiServiceException.Kind.UNAVAILABLE,
+                    "AI service returned HTTP " + e.getStatusCode().value());
+        } catch (RuntimeException e) {
+            throw new AiServiceException(AiServiceException.Kind.UNAVAILABLE, "AI service is unreachable", e);
+        }
+    }
+
     static GenerateOutcome parse(String response) {
         try {
             Map<String, Object> root = JsonReader.parseObject(response);

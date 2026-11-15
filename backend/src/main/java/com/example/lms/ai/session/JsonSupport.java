@@ -8,12 +8,12 @@ import com.example.lms.shared.json.JsonReader;
 import com.example.lms.shared.json.JsonWriter;
 
 /** Ghi Map/List/String/Number/Boolean/null thành JSON (cặp với {@link JsonReader}); không phụ thuộc thư viện ngoài. */
-final class JsonSupport {
+public final class JsonSupport {
 
     private JsonSupport() {
     }
 
-    static String toJson(Object value) {
+    public static String toJson(Object value) {
         StringBuilder out = new StringBuilder();
         write(out, value);
         return out.toString();
@@ -62,7 +62,7 @@ final class JsonSupport {
         }
     }
 
-    static List<String> stringList(String json) {
+    public static List<String> stringList(String json) {
         if (json == null || json.isBlank()) {
             return List.of();
         }
@@ -70,11 +70,11 @@ final class JsonSupport {
     }
 
     /** Đổi giá trị đã parse (List hoặc null) thành List<String>. */
-    static List<String> stringsOf(Object parsed) {
+    public static List<String> stringsOf(Object parsed) {
         return parsed instanceof List<?> items ? items.stream().map(String::valueOf).toList() : List.of();
     }
 
-    static Map<String, Object> object(String json) {
+    public static Map<String, Object> object(String json) {
         return json == null || json.isBlank() ? Map.of() : JsonReader.parseObject(json);
     }
 }
