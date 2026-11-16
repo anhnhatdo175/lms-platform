@@ -1,0 +1,40 @@
+-- These keys let Commerce and the question bank add foreign keys before the full Course schema is installed.
+CREATE TABLE IF NOT EXISTS course_categories (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    name VARCHAR(255) NOT NULL,
+    slug VARCHAR(255) NOT NULL,
+    description TEXT NULL,
+    active BOOLEAN NOT NULL DEFAULT TRUE,
+    created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+    updated_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+    PRIMARY KEY (id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+CREATE TABLE IF NOT EXISTS courses (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    category_id BIGINT UNSIGNED NOT NULL,
+    created_by BIGINT UNSIGNED NOT NULL,
+    thumbnail_file_id BIGINT UNSIGNED NULL,
+    title VARCHAR(255) NOT NULL,
+    slug VARCHAR(255) NOT NULL,
+    short_description VARCHAR(500) NULL,
+    description LONGTEXT NULL,
+    original_price BIGINT UNSIGNED NOT NULL DEFAULT 0,
+    sale_price BIGINT UNSIGNED NOT NULL DEFAULT 0,
+    status ENUM('DRAFT','PENDING_REVIEW','REJECTED','PUBLISHED','HIDDEN','ARCHIVED') NOT NULL DEFAULT 'DRAFT',
+    subject_code VARCHAR(100) NULL,
+    grade_level VARCHAR(50) NULL,
+    access_duration_days INT UNSIGNED NULL,
+    completion_rule ENUM(
+        'ALL_MANDATORY_LESSONS',
+        'ALL_MANDATORY_LESSONS_AND_PASS_REQUIRED_EXAMS',
+        'MANUAL_BY_TEACHER'
+    ) NOT NULL DEFAULT 'ALL_MANDATORY_LESSONS',
+    published_at DATETIME(6) NULL,
+    hidden_at DATETIME(6) NULL,
+    archived_at DATETIME(6) NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+    updated_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+    PRIMARY KEY (id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;

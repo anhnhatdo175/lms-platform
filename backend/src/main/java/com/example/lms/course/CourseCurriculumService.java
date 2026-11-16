@@ -2,6 +2,8 @@ package com.example.lms.course;
 
 import com.example.lms.auth.AuthException;
 import com.example.lms.auth.UserPrincipal;
+import com.example.lms.exam.Exam;
+import com.example.lms.exam.ExamRepository;
 import com.example.lms.file.FileStorageService;
 import tools.jackson.databind.JsonNode;
 import org.hibernate.exception.ConstraintViolationException;
@@ -11,6 +13,11 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 @Service
@@ -25,16 +32,25 @@ public class CourseCurriculumService {
     private final CourseRepository courseRepository;
     private final CourseSectionRepository sectionRepository;
     private final LessonRepository lessonRepository;
+    private final LessonResourceRepository lessonResourceRepository;
+    private final LessonPrerequisiteRepository prerequisiteRepository;
+    private final ExamRepository examRepository;
     private final FileStorageService fileStorageService;
 
     public CourseCurriculumService(
             CourseRepository courseRepository,
             CourseSectionRepository sectionRepository,
             LessonRepository lessonRepository,
+            LessonResourceRepository lessonResourceRepository,
+            LessonPrerequisiteRepository prerequisiteRepository,
+            ExamRepository examRepository,
             FileStorageService fileStorageService) {
         this.courseRepository = courseRepository;
         this.sectionRepository = sectionRepository;
         this.lessonRepository = lessonRepository;
+        this.lessonResourceRepository = lessonResourceRepository;
+        this.prerequisiteRepository = prerequisiteRepository;
+        this.examRepository = examRepository;
         this.fileStorageService = fileStorageService;
     }
 
@@ -116,7 +132,7 @@ public class CourseCurriculumService {
                 request.completionMethod() == null ? CompletionMethod.MANUAL : request.completionMethod(),
                 request.completionThreshold());
         try {
-            return LessonDetail.from(lessonRepository.saveAndFlush(lesson));
+            return lessonDetail(lessonRepository.saveAndFlush(lesson));
         } catch (DataIntegrityViolationException exception) {
             if (!violatesConstraint(exception, "uk_lessons_position")) throw exception;
             throw positionConflict();
@@ -172,7 +188,56 @@ public class CourseCurriculumService {
                 completionMethod,
                 updateThreshold,
                 threshold);
-        return LessonDetail.from(lessonRepository.saveAndFlush(lesson));
+        return lessonDetail(lessonRepository.saveAndFlush(lesson));
+    }
+
+    @Transactional
+    public LessonResourceSummary attachLessonResource(
+            UserPrincipal principal, Long lessonId, AttachResourceRequest request) {
+        Lesson lesson = requireTeacherLesson(principal.id(), lessonId);
+        assertEditable(lesson.getSection().getCourse());
+        fileStorageService.validateLessonResource(request.resourceId(), principal.id());
+        FileStorageService.LessonResourceFile file = fileStorageService.lessonResourceFile(request.resourceId());
+        if (lessonResourceRepository.existsByLesson_IdAndResourceId(lessonId, request.resourceId())) {
+            throw resourceConflict();
+        }
+
+        List<LessonResource> current = lessonResourceRepository.findAllByLesson_IdOrderByPositionAscIdAsc(lessonId);
+        int position = request.position() == null
+                ? current.stream().mapToInt(LessonResource::getPosition).max().orElse(0) + 1
+                : request.position();
+        if (lessonResourceRepository.existsByLesson_IdAndPosition(lessonId, position)) {
+            throw positionConflict();
+        }
+        String title = request.title() == null || request.title().isBlank()
+                ? file.originalName()
+                : request.title().trim();
+        LessonResource resource = new LessonResource(
+                lesson,
+                request.resourceId(),
+                title,
+                request.resourceType() == null ? LessonResourceType.ATTACHMENT : request.resourceType(),
+                request.downloadable() == null || request.downloadable(),
+                position);
+        try {
+            LessonResource saved = lessonResourceRepository.saveAndFlush(resource);
+            return LessonResourceSummary.from(saved, saved.isDownloadable() ? file.url() : null);
+        } catch (DataIntegrityViolationException exception) {
+            if (!violatesConstraint(exception, "uk_lesson_resources_lesson_position")
+                    && !violatesConstraint(exception, "uk_lesson_resources_lesson_file")) {
+                throw exception;
+            }
+            throw resourceConflict();
+        }
+    }
+
+    @Transactional
+    public void detachLessonResource(UserPrincipal principal, Long lessonId, Long resourceId) {
+        Lesson lesson = requireTeacherLesson(principal.id(), lessonId);
+        assertEditable(lesson.getSection().getCourse());
+        LessonResource resource = lessonResourceRepository.findByLesson_IdAndResourceId(lessonId, resourceId)
+                .orElseThrow(CourseCurriculumService::courseNotFound);
+        lessonResourceRepository.delete(resource);
     }
 
     @Transactional
@@ -183,6 +248,158 @@ public class CourseCurriculumService {
             throw unsafeDelete("Chỉ xóa được bài học chưa phát hành trong khóa học nháp.");
         }
         lessonRepository.delete(lesson);
+    }
+
+    @Transactional
+    public LessonPrerequisiteRef setLessonPrerequisite(
+            UserPrincipal principal, Long lessonId, PrerequisiteRequest request) {
+        Lesson lesson = requireTeacherLesson(principal.id(), lessonId);
+        assertEditable(lesson.getSection().getCourse());
+        if (request.conditionType() == null) throw invalidCurriculum();
+
+        Lesson prerequisiteLesson = null;
+        Exam prerequisiteExam = null;
+        if (request.conditionType() == PrerequisiteConditionType.COMPLETE_LESSON) {
+            if (request.prerequisiteLessonId() == null || request.prerequisiteExamId() != null) {
+                throw invalidCurriculum();
+            }
+            prerequisiteLesson = lessonRepository.findById(request.prerequisiteLessonId())
+                    .orElseThrow(CourseCurriculumService::invalidCurriculum);
+            if (prerequisiteLesson.getId().equals(lessonId)
+                    || !prerequisiteLesson.getSection().getCourse().getId()
+                            .equals(lesson.getSection().getCourse().getId())) {
+                throw invalidCurriculum();
+            }
+            if (wouldCreatePrerequisiteCycle(lessonId, prerequisiteLesson.getId())) {
+                throw new AuthException(
+                        "PREREQUISITE_CYCLE", "Điều kiện tiên quyết tạo thành vòng lặp.",
+                        HttpStatus.CONFLICT);
+            }
+        } else {
+            if (request.prerequisiteExamId() == null || request.prerequisiteLessonId() != null) {
+                throw invalidCurriculum();
+            }
+            prerequisiteExam = examRepository.findById(request.prerequisiteExamId())
+                    .orElseThrow(CourseCurriculumService::invalidCurriculum);
+            Lesson examLesson = lessonRepository.findById(prerequisiteExam.getLessonId())
+                    .orElseThrow(CourseCurriculumService::invalidCurriculum);
+            if (!examLesson.getSection().getCourse().getId()
+                    .equals(lesson.getSection().getCourse().getId())) {
+                throw invalidCurriculum();
+            }
+        }
+
+        LessonPrerequisite prerequisite = prerequisiteRepository.findByLesson_Id(lessonId).orElse(null);
+        if (prerequisite == null) {
+            prerequisite = new LessonPrerequisite(
+                    lesson, prerequisiteLesson, prerequisiteExam, request.conditionType());
+        } else {
+            prerequisite.replace(prerequisiteLesson, prerequisiteExam, request.conditionType());
+        }
+        return prerequisiteRepository.save(prerequisite).toRef();
+    }
+
+    @Transactional
+    public void removeLessonPrerequisite(UserPrincipal principal, Long lessonId) {
+        Lesson lesson = requireTeacherLesson(principal.id(), lessonId);
+        assertEditable(lesson.getSection().getCourse());
+        prerequisiteRepository.deleteByLesson_Id(lessonId);
+    }
+
+    @Transactional
+    public void reorderCurriculum(UserPrincipal principal, Long courseId, CurriculumOrderRequest request) {
+        Course course = requireTeacherCourse(principal.id(), courseId);
+        assertEditable(course);
+
+        List<CourseSection> sections = sectionRepository.findAllByCourse_IdOrderByPositionAscIdAsc(courseId);
+        List<Lesson> lessons = lessonRepository.findAllByCourseIdOrderBySectionAndPosition(courseId);
+        Map<Long, CourseSection> sectionsById = new HashMap<>();
+        Map<Long, List<Lesson>> lessonsBySection = new HashMap<>();
+        Map<Long, Lesson> lessonsById = new HashMap<>();
+        for (CourseSection section : sections) sectionsById.put(section.getId(), section);
+        for (Lesson lesson : lessons) {
+            lessonsBySection.computeIfAbsent(lesson.getSection().getId(), ignored -> new ArrayList<>()).add(lesson);
+            lessonsById.put(lesson.getId(), lesson);
+        }
+
+        Set<Long> orderedSectionIds = new HashSet<>();
+        Set<Long> orderedLessonIds = new HashSet<>();
+        for (CurriculumOrderRequest.SectionOrder orderedSection : request.sections()) {
+            CourseSection section = sectionsById.get(orderedSection.sectionId());
+            if (section == null || !orderedSectionIds.add(section.getId())) throw invalidCurriculum();
+            List<Lesson> sectionLessons = lessonsBySection.getOrDefault(section.getId(), List.of());
+            if (orderedSection.lessonIds().size() != sectionLessons.size()) throw invalidCurriculum();
+            for (Long lessonId : orderedSection.lessonIds()) {
+                Lesson lesson = lessonsById.get(lessonId);
+                if (lesson == null || !lesson.getSection().getId().equals(section.getId())
+                        || !orderedLessonIds.add(lessonId)) {
+                    throw invalidCurriculum();
+                }
+            }
+        }
+        if (orderedSectionIds.size() != sections.size() || orderedLessonIds.size() != lessons.size()) {
+            throw invalidCurriculum();
+        }
+
+        int sectionTemporaryBase = temporaryPositionBase(sections.stream()
+                .mapToInt(CourseSection::getPosition).max().orElse(0), sections.size());
+        for (int index = 0; index < sections.size(); index++) {
+            sections.get(index).setPosition(sectionTemporaryBase + index);
+        }
+        sectionRepository.saveAllAndFlush(sections);
+
+        int lessonTemporaryBase = temporaryPositionBase(lessons.stream()
+                .mapToInt(Lesson::getPosition).max().orElse(0), lessons.size());
+        for (int index = 0; index < lessons.size(); index++) {
+            lessons.get(index).setPosition(lessonTemporaryBase + index);
+        }
+        lessonRepository.saveAllAndFlush(lessons);
+
+        int sectionPosition = 1;
+        for (CurriculumOrderRequest.SectionOrder orderedSection : request.sections()) {
+            CourseSection section = sectionsById.get(orderedSection.sectionId());
+            section.setPosition(sectionPosition++);
+            int lessonPosition = 1;
+            for (Long lessonId : orderedSection.lessonIds()) {
+                lessonsById.get(lessonId).setPosition(lessonPosition++);
+            }
+        }
+        sectionRepository.saveAllAndFlush(sections);
+        lessonRepository.saveAllAndFlush(lessons);
+    }
+
+    private boolean wouldCreatePrerequisiteCycle(Long lessonId, Long prerequisiteLessonId) {
+        Map<Long, Long> dependencies = new HashMap<>();
+        for (LessonPrerequisite item :
+                prerequisiteRepository.findAllByConditionType(PrerequisiteConditionType.COMPLETE_LESSON)) {
+            dependencies.put(item.getLesson().getId(), item.getPrerequisiteLesson().getId());
+        }
+        Set<Long> visited = new HashSet<>();
+        Long current = prerequisiteLessonId;
+        while (current != null) {
+            if (current.equals(lessonId) || !visited.add(current)) return true;
+            current = dependencies.get(current);
+        }
+        return false;
+    }
+
+    private static int temporaryPositionBase(int maximumPosition, int itemCount) {
+        long base = (long) maximumPosition + itemCount + 1;
+        if (base + itemCount > Integer.MAX_VALUE) throw positionConflict();
+        return (int) base;
+    }
+
+    private LessonDetail lessonDetail(Lesson lesson) {
+        List<LessonResourceSummary> resources = lessonResourceRepository
+                .findAllByLesson_IdOrderByPositionAscIdAsc(lesson.getId())
+                .stream()
+                .map(resource -> LessonResourceSummary.from(
+                        resource,
+                        resource.isDownloadable()
+                                ? fileStorageService.lessonResourceFile(resource.getResourceId()).url()
+                                : null))
+                .toList();
+        return LessonDetail.from(lesson, resources);
     }
 
     private Course requireTeacherCourse(Long teacherId, Long courseId) {
@@ -318,6 +535,13 @@ public class CourseCurriculumService {
     private static AuthException positionConflict() {
         return new AuthException(
                 "CURRICULUM_POSITION_CONFLICT", "Vị trí chương hoặc bài học đã được sử dụng.",
+                HttpStatus.CONFLICT);
+    }
+
+    private static AuthException resourceConflict() {
+        return new AuthException(
+                "LESSON_RESOURCE_CONFLICT",
+                "Tài nguyên đã được gắn hoặc vị trí hiển thị đã được sử dụng.",
                 HttpStatus.CONFLICT);
     }
 

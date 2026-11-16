@@ -63,4 +63,30 @@ public class CourseTeacher {
     public boolean isActive() {
         return active;
     }
+
+    public User getTeacher() {
+        return teacher;
+    }
+
+    public boolean isPrimary() {
+        return primary;
+    }
+
+    public Instant getAssignedAt() {
+        return assignedAt;
+    }
+
+    public void assign(boolean primary, User assignedBy) {
+        this.primary = primary;
+        this.active = true;
+        this.assignedBy = assignedBy;
+        this.removedAt = null;
+    }
+
+    public void remove() {
+        this.active = false;
+        this.primary = false;
+        this.removedAt = Instant.now();
+    }
+
 }

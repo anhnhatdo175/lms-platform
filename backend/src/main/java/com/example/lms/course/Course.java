@@ -128,6 +128,39 @@ public class Course {
         this.status = CourseStatus.DRAFT;
     }
 
+    public void withdrawReview() {
+        status = CourseStatus.DRAFT;
+    }
+
+    public void reject() {
+        status = CourseStatus.REJECTED;
+    }
+
+    public void submitForReview() {
+        status = CourseStatus.PENDING_REVIEW;
+    }
+
+    public void reopen() {
+        status = CourseStatus.DRAFT;
+    }
+
+    public void publish(Instant publishedAt) {
+        status = CourseStatus.PUBLISHED;
+        this.publishedAt = publishedAt;
+        hiddenAt = null;
+        archivedAt = null;
+    }
+
+    public void hide(Instant hiddenAt) {
+        status = CourseStatus.HIDDEN;
+        this.hiddenAt = hiddenAt;
+    }
+
+    public void archive(Instant archivedAt) {
+        status = CourseStatus.ARCHIVED;
+        this.archivedAt = archivedAt;
+    }
+
     @PrePersist
     void setCreatedAt() {
         Instant now = Instant.now();

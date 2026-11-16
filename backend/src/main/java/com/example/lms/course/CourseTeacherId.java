@@ -23,6 +23,14 @@ public class CourseTeacherId implements Serializable {
         this.teacherId = teacherId;
     }
 
+    public Long getCourseId() {
+        return courseId;
+    }
+
+    public Long getTeacherId() {
+        return teacherId;
+    }
+
     @Override
     public boolean equals(Object other) {
         if (this == other) return true;

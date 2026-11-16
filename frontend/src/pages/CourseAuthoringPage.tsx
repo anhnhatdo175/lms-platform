@@ -1,5 +1,10 @@
-import { useEffect, useMemo, useState, type FormEvent } from 'react';
-import { ApiRequestError } from '../services/authApi';
+import { useEffect, useMemo, useState, type ChangeEvent, type FormEvent } from 'react';
+import {
+  ApiRequestError,
+  completeCourseThumbnailUpload,
+  createCourseThumbnailUploadUrl,
+  uploadCourseThumbnailFile,
+} from '../services/authApi';
 import {
   createCourse,
   createLesson,
@@ -9,8 +14,12 @@ import {
   getTeacherCourse,
   listCourseCategories,
   listTeacherCourses,
+  reopenCourse,
+  submitCourseReview,
   updateLesson,
   updateSection,
+  updateTeacherCourse,
+  withdrawCourseReview,
   type CourseCategory,
   type CourseCompletionRule,
   type CourseStatus,
@@ -178,6 +187,68 @@ export function CourseAuthoringPage({ accessToken }: CourseAuthoringPageProps) {
     } catch (error) {
       setNotice({
         message: error instanceof ApiRequestError ? error.message : 'Không thể mở khóa học.',
+        error: true,
+      });
+    } finally {
+      setBusyKey('');
+    }
+  }
+
+  async function uploadCourseThumbnail(event: ChangeEvent<HTMLInputElement>) {
+    const input = event.currentTarget;
+    const file = input.files?.[0];
+    if (!selectedCourse || !file) return;
+    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type) || file.size > 10 * 1024 * 1024) {
+      setNotice({ message: 'Ảnh khóa học phải là JPEG, PNG hoặc WebP và không vượt quá 10 MiB.', error: true });
+      input.value = '';
+      return;
+    }
+
+    setBusyKey(`thumbnail-${selectedCourse.id}`);
+    setNotice(null);
+    try {
+      const upload = await createCourseThumbnailUploadUrl(accessToken, file);
+      await uploadCourseThumbnailFile(upload, file);
+      const resource = await completeCourseThumbnailUpload(accessToken, upload.uploadId, file);
+      const updated = await updateTeacherCourse(accessToken, selectedCourse.id, {
+        thumbnailResourceId: resource.id,
+      });
+      setSelectedCourse(updated);
+      setCourses((current) => current.map((course) => course.id === updated.id ? updated : course));
+      setNotice({ message: 'Đã cập nhật ảnh đại diện khóa học.', error: false });
+    } catch (error) {
+      setNotice({
+        message: error instanceof ApiRequestError ? error.message : 'Không thể cập nhật ảnh khóa học.',
+        error: true,
+      });
+    } finally {
+      input.value = '';
+      setBusyKey('');
+    }
+  }
+
+  async function updateCourseWorkflow(action: 'submit' | 'withdraw' | 'reopen') {
+    if (!selectedCourse) return;
+    setBusyKey(`workflow-${selectedCourse.id}`);
+    setNotice(null);
+    try {
+      if (action === 'submit') await submitCourseReview(accessToken, selectedCourse.id);
+      if (action === 'withdraw') await withdrawCourseReview(accessToken, selectedCourse.id);
+      if (action === 'reopen') await reopenCourse(accessToken, selectedCourse.id);
+      const updated = await getTeacherCourse(accessToken, selectedCourse.id);
+      setSelectedCourse(updated);
+      setCourses((current) => current.map((course) => course.id === updated.id ? updated : course));
+      setNotice({
+        message: action === 'submit'
+          ? 'Đã gửi khóa học để Admin duyệt.'
+          : action === 'withdraw'
+            ? 'Đã rút yêu cầu duyệt; khóa học trở về bản nháp.'
+            : 'Đã mở lại khóa học để chỉnh sửa.',
+        error: false,
+      });
+    } catch (error) {
+      setNotice({
+        message: error instanceof ApiRequestError ? error.message : 'Không thể cập nhật quy trình khóa học.',
         error: true,
       });
     } finally {
@@ -539,9 +610,54 @@ export function CourseAuthoringPage({ accessToken }: CourseAuthoringPageProps) {
                   <h2>{selectedCourse.title}</h2>
                   <p>{selectedCourse.shortDescription || selectedCourse.category?.name || 'Chưa có mô tả ngắn'}</p>
                 </div>
-                <span className={`${styles.statusBadge} ${styles[`status_${selectedCourse.status}`]}`}>
-                  {statusLabels[selectedCourse.status]}
-                </span>
+                <div className={styles.courseWorkflowActions}>
+                  <span className={`${styles.statusBadge} ${styles[`status_${selectedCourse.status}`]}`}>
+                    {statusLabels[selectedCourse.status]}
+                  </span>
+                  {['DRAFT', 'PUBLISHED', 'HIDDEN'].includes(selectedCourse.status) && (
+                    <label className={styles.secondaryButton}>
+                      {busyKey === `thumbnail-${selectedCourse.id}` ? 'Đang tải ảnh...' : 'Tải ảnh khóa học'}
+                      <input
+                        accept="image/jpeg,image/png,image/webp"
+                        aria-label="Tải ảnh khóa học"
+                        disabled={busyKey === `thumbnail-${selectedCourse.id}`}
+                        hidden
+                        onChange={(event) => void uploadCourseThumbnail(event)}
+                        type="file"
+                      />
+                    </label>
+                  )}
+                  {selectedCourse.status === 'DRAFT' && (
+                    <button
+                      className={styles.primaryButton}
+                      disabled={busyKey === `workflow-${selectedCourse.id}`}
+                      onClick={() => void updateCourseWorkflow('submit')}
+                      type="button"
+                    >
+                      Gửi duyệt
+                    </button>
+                  )}
+                  {selectedCourse.status === 'PENDING_REVIEW' && (
+                    <button
+                      className={styles.secondaryButton}
+                      disabled={busyKey === `workflow-${selectedCourse.id}`}
+                      onClick={() => void updateCourseWorkflow('withdraw')}
+                      type="button"
+                    >
+                      Rút yêu cầu
+                    </button>
+                  )}
+                  {selectedCourse.status === 'REJECTED' && (
+                    <button
+                      className={styles.primaryButton}
+                      disabled={busyKey === `workflow-${selectedCourse.id}`}
+                      onClick={() => void updateCourseWorkflow('reopen')}
+                      type="button"
+                    >
+                      Mở lại để sửa
+                    </button>
+                  )}
+                </div>
               </section>
 
               <div className={styles.contractNotice} role="note">

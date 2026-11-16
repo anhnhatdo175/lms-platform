@@ -1,7 +1,7 @@
 -- Người B — Exam (ERD v2.2 Mục 9): exams, exam_questions, exam_attempts, attempt_questions, attempt_answers, attempt_answer_options.
 -- questions và question_options là của C; lesson_prerequisites (của A) cần thêm FK tới exams SAU migration này.
 
-CREATE TABLE exams (
+CREATE TABLE IF NOT EXISTS exams (
     id                  BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
     lesson_id           BIGINT UNSIGNED NOT NULL,
     title               VARCHAR(255)    NOT NULL,
@@ -28,7 +28,7 @@ CREATE TABLE exams (
     CONSTRAINT fk_exams_created_by FOREIGN KEY (created_by) REFERENCES users (id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
-CREATE TABLE exam_questions (
+CREATE TABLE IF NOT EXISTS exam_questions (
     exam_id     BIGINT UNSIGNED NOT NULL,
     question_id BIGINT UNSIGNED NOT NULL,
     position    INT UNSIGNED    NOT NULL,
@@ -42,7 +42,7 @@ CREATE TABLE exam_questions (
     CONSTRAINT fk_exam_questions_question FOREIGN KEY (question_id) REFERENCES questions (id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
-CREATE TABLE exam_attempts (
+CREATE TABLE IF NOT EXISTS exam_attempts (
     id              BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
     exam_id         BIGINT UNSIGNED NOT NULL,
     student_id      BIGINT UNSIGNED NOT NULL,
@@ -70,7 +70,7 @@ CREATE TABLE exam_attempts (
     CONSTRAINT fk_exam_attempts_enrollment FOREIGN KEY (enrollment_id) REFERENCES enrollments (id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
-CREATE TABLE attempt_questions (
+CREATE TABLE IF NOT EXISTS attempt_questions (
     id                   BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
     attempt_id           BIGINT UNSIGNED NOT NULL,
     source_question_id   BIGINT UNSIGNED NOT NULL,
@@ -91,7 +91,7 @@ CREATE TABLE attempt_questions (
     CONSTRAINT fk_attempt_questions_question FOREIGN KEY (source_question_id) REFERENCES questions (id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
-CREATE TABLE attempt_answers (
+CREATE TABLE IF NOT EXISTS attempt_answers (
     id                  BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
     attempt_id          BIGINT UNSIGNED NOT NULL,
     attempt_question_id BIGINT UNSIGNED NOT NULL,
@@ -106,7 +106,7 @@ CREATE TABLE attempt_answers (
     CONSTRAINT fk_attempt_answers_attempt_question FOREIGN KEY (attempt_question_id) REFERENCES attempt_questions (id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
-CREATE TABLE attempt_answer_options (
+CREATE TABLE IF NOT EXISTS attempt_answer_options (
     attempt_answer_id       BIGINT UNSIGNED NOT NULL,
     option_id               BIGINT UNSIGNED NOT NULL,
     option_content_snapshot TEXT            NOT NULL,

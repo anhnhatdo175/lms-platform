@@ -19,7 +19,7 @@ export interface FileResource {
   createdAt: string;
 }
 
-interface UploadUrlResult {
+export interface UploadUrlResult {
   uploadId: string;
   resourceId: number;
   uploadUrl: string;
@@ -192,6 +192,22 @@ export function createAvatarUploadUrl(
   });
 }
 
+export function createCourseThumbnailUploadUrl(
+  accessToken: string,
+  file: File,
+): Promise<UploadUrlResult> {
+  return requestData<UploadUrlResult>('/teacher/files/upload-url', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${accessToken}` },
+    body: JSON.stringify({
+      fileName: file.name,
+      contentType: file.type,
+      sizeBytes: file.size,
+      purpose: 'COURSE_THUMBNAIL',
+    }),
+  });
+}
+
 export async function uploadAvatarFile(
   upload: UploadUrlResult,
   file: File,
@@ -215,7 +231,47 @@ export async function uploadAvatarFile(
   }
 }
 
+export async function uploadCourseThumbnailFile(
+  upload: UploadUrlResult,
+  file: File,
+): Promise<void> {
+  let response: Response;
+  try {
+    response = await fetch(upload.uploadUrl, {
+      method: upload.method,
+      headers: upload.headers,
+      body: file,
+      credentials: 'omit',
+    });
+  } catch (error) {
+    if (error instanceof TypeError) {
+      throw new ApiRequestError('Không thể tải ảnh khóa học lên kho lưu trữ. Vui lòng thử lại.', 0);
+    }
+    throw error;
+  }
+  if (!response.ok) {
+    throw new ApiRequestError('Kho lưu trữ không chấp nhận ảnh khóa học.', response.status);
+  }
+}
+
 export function completeAvatarUpload(
+  accessToken: string,
+  uploadId: string,
+  file: File,
+): Promise<FileResource> {
+  return requestData<FileResource>('/teacher/files/complete-upload', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${accessToken}` },
+    body: JSON.stringify({
+      uploadId,
+      fileName: file.name,
+      contentType: file.type,
+      sizeBytes: file.size,
+    }),
+  });
+}
+
+export function completeCourseThumbnailUpload(
   accessToken: string,
   uploadId: string,
   file: File,

@@ -1,4 +1,4 @@
-CREATE TABLE course_categories (
+CREATE TABLE IF NOT EXISTS course_categories (
     id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
     name VARCHAR(255) NOT NULL,
     slug VARCHAR(255) NOT NULL,
@@ -6,11 +6,10 @@ CREATE TABLE course_categories (
     active BOOLEAN NOT NULL DEFAULT TRUE,
     created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
     updated_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
-    PRIMARY KEY (id),
-    CONSTRAINT uk_course_categories_slug UNIQUE (slug)
+    PRIMARY KEY (id)
 );
 
-CREATE TABLE courses (
+CREATE TABLE IF NOT EXISTS courses (
     id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
     category_id BIGINT UNSIGNED NOT NULL,
     created_by BIGINT UNSIGNED NOT NULL,
@@ -36,16 +35,7 @@ CREATE TABLE courses (
     version BIGINT NOT NULL DEFAULT 0,
     created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
     updated_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
-    PRIMARY KEY (id),
-    CONSTRAINT uk_courses_slug UNIQUE (slug),
-    CONSTRAINT fk_courses_category FOREIGN KEY (category_id)
-        REFERENCES course_categories (id) ON DELETE RESTRICT,
-    CONSTRAINT fk_courses_creator FOREIGN KEY (created_by)
-        REFERENCES users (id) ON DELETE RESTRICT,
-    CONSTRAINT fk_courses_thumbnail FOREIGN KEY (thumbnail_file_id)
-        REFERENCES file_resources (id) ON DELETE SET NULL,
-    INDEX idx_courses_status_created (status, created_at),
-    INDEX idx_courses_category_status (category_id, status)
+    PRIMARY KEY (id)
 );
 
 CREATE TABLE course_teachers (

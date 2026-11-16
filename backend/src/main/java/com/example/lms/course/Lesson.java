@@ -159,6 +159,10 @@ public class Lesson {
         return position;
     }
 
+    public void setPosition(int position) {
+        this.position = position;
+    }
+
     public boolean isPreview() {
         return preview;
     }

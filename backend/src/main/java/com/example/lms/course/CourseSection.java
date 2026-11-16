@@ -103,6 +103,10 @@ public class CourseSection {
         return position;
     }
 
+    public void setPosition(int position) {
+        this.position = position;
+    }
+
     public boolean isPublished() {
         return published;
     }

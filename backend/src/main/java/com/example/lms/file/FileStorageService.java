@@ -249,6 +249,49 @@ public class FileStorageService {
                 .orElse(null);
     }
 
+    @Transactional(readOnly = true)
+    public TemporaryResourceUrl lessonVideoUrl(Long resourceId) {
+        if (resourceId == null) return new TemporaryResourceUrl(null, null);
+        return lessonResourceUrl(resourceId, "LESSON_VIDEO_NOT_FOUND", "Không tìm thấy video bài học.");
+    }
+
+    @Transactional(readOnly = true)
+    public LessonResourceFile lessonResourceFile(Long resourceId) {
+        FileResource resource = findLessonResource(resourceId);
+        return new LessonResourceFile(
+                resource.getOriginalName(),
+                downloadUrl(resource),
+                Instant.now().plus(DOWNLOAD_URL_TTL));
+    }
+
+    private TemporaryResourceUrl lessonResourceUrl(Long resourceId, String errorCode, String message) {
+        if (resourceId == null) return new TemporaryResourceUrl(null, null);
+        FileResource resource = findLessonResource(resourceId, errorCode, message);
+        return new TemporaryResourceUrl(downloadUrl(resource), Instant.now().plus(DOWNLOAD_URL_TTL));
+    }
+
+    private FileResource findLessonResource(Long resourceId) {
+        return findLessonResource(
+                resourceId,
+                "LESSON_RESOURCE_NOT_FOUND",
+                "Không tìm thấy tài nguyên bài học.");
+    }
+
+    private FileResource findLessonResource(Long resourceId, String errorCode, String message) {
+        FileResource resource = fileResourceRepository.findById(resourceId)
+                .filter(file -> file.getPurpose() == FilePurpose.LESSON_RESOURCE)
+                .filter(file -> file.getStatus() == FileStatus.READY)
+                .orElseThrow(() -> new AuthException(
+                        errorCode, message, HttpStatus.NOT_FOUND));
+        return resource;
+    }
+
+    public record TemporaryResourceUrl(String url, Instant expiresAt) {
+    }
+
+    public record LessonResourceFile(String originalName, String url, Instant expiresAt) {
+    }
+
     private void validateUpload(UserPrincipal principal, CreateUploadUrlRequest request) {
         if (request.purpose() == FilePurpose.USER_AVATAR) {
             if (request.sizeBytes() > MAX_AVATAR_BYTES) {

@@ -26,6 +26,10 @@ public record LessonDetail(
         Instant updatedAt) {
 
     public static LessonDetail from(Lesson lesson) {
+        return from(lesson, List.of());
+    }
+
+    public static LessonDetail from(Lesson lesson, List<LessonResourceSummary> resources) {
         return new LessonDetail(
                 lesson.getId(),
                 lesson.getSection().getId(),
@@ -43,7 +47,7 @@ public record LessonDetail(
                 lesson.getCompletionThreshold(),
                 null,
                 null,
-                List.of(),
+                resources,
                 lesson.getCreatedAt(),
                 lesson.getUpdatedAt());
     }

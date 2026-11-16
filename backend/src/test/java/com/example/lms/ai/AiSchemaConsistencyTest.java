@@ -32,7 +32,7 @@ class AiSchemaConsistencyTest {
 
     private static String migration() throws IOException {
         try (InputStream in = AiSchemaConsistencyTest.class.getResourceAsStream(
-                "/db/migration/V20261110_1010__c_ai_tables.sql")) {
+                "/db/migration/V202611121003__c_ai_tables.sql")) {
             assertTrue(in != null, "migration file is missing from the classpath");
             return new String(in.readAllBytes(), StandardCharsets.UTF_8);
         }

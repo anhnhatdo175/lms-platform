@@ -4,6 +4,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.util.List;
 import java.util.Optional;
 
 public interface CourseSectionRepository extends JpaRepository<CourseSection, Long> {
@@ -16,4 +17,10 @@ public interface CourseSectionRepository extends JpaRepository<CourseSection, Lo
     long countByCourse_Id(Long courseId);
 
     Optional<CourseSection> findByIdAndCourse_Id(Long sectionId, Long courseId);
+
+    List<CourseSection> findAllByCourse_IdOrderByPositionAscIdAsc(Long courseId);
+
+    boolean existsByCourse_IdAndPublishedTrue(Long courseId);
+
+    List<CourseSection> findAllByCourse_IdAndPublishedTrueOrderByPositionAscIdAsc(Long courseId);
 }

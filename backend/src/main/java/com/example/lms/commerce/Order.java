@@ -57,7 +57,7 @@ public class Order {
     @Column(name = "checkout_idempotency_key", nullable = false, updatable = false, length = 64)
     private String checkoutIdempotencyKey;
 
-    @Column(name = "checkout_request_hash", nullable = false, updatable = false, length = 64)
+    @Column(name = "checkout_request_hash", nullable = false, updatable = false, columnDefinition = "CHAR(64)")
     private String checkoutRequestHash;
 
     @Enumerated(EnumType.STRING)

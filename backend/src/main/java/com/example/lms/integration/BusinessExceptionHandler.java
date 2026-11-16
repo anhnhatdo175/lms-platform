@@ -20,7 +20,8 @@ import java.util.UUID;
  * không đổi cách {@code ApiExceptionHandler} của A trả lỗi cho phần của A.
  */
 @RestControllerAdvice(basePackages = { "com.example.lms.commerce", "com.example.lms.payment",
-        "com.example.lms.enrollment", "com.example.lms.exam", "com.example.lms.question" })
+        "com.example.lms.enrollment", "com.example.lms.exam", "com.example.lms.question",
+        "com.example.lms.learning" })
 @Order(Ordered.HIGHEST_PRECEDENCE)
 public class BusinessExceptionHandler {
 

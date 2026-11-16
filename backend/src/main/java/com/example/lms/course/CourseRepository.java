@@ -45,12 +45,33 @@ public interface CourseRepository extends JpaRepository<Course, Long> {
 
     @Query("""
             select course from Course course
+            where (:status is null or course.status = :status)
+              and (:categoryId is null or course.category.id = :categoryId)
+              and (:query is null
+                   or lower(course.title) like lower(concat('%', :query, '%'))
+                   or lower(course.description) like lower(concat('%', :query, '%')))
+            """)
+    Page<Course> searchAdminCourses(
+            @Param("status") CourseStatus status,
+            @Param("categoryId") Long categoryId,
+            @Param("query") String query,
+            Pageable pageable);
+
+    @Query("""
+            select course from Course course
             where course.status = com.example.lms.course.CourseStatus.PUBLISHED
               and (:categoryId is null or course.category.id = :categoryId)
-              and (:query is null or lower(course.title) like lower(concat('%', :query, '%')))
+              and (:query is null
+                   or lower(course.title) like lower(concat('%', :query, '%'))
+                   or lower(course.shortDescription) like lower(concat('%', :query, '%'))
+                   or lower(course.description) like lower(concat('%', :query, '%')))
+              and (:minPrice is null or course.salePrice >= :minPrice)
+              and (:maxPrice is null or course.salePrice <= :maxPrice)
             """)
     Page<Course> searchPublicCourses(
             @Param("categoryId") Long categoryId,
             @Param("query") String query,
+            @Param("minPrice") Long minPrice,
+            @Param("maxPrice") Long maxPrice,
             Pageable pageable);
 }

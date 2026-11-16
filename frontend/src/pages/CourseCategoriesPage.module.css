@@ -119,10 +119,13 @@
 }
 
 .primaryButton {
-  margin-top: 18px;
   border-color: #0d8178;
   background: #0d8178;
   color: #fff;
+}
+
+.field + .primaryButton {
+  margin-top: 18px;
 }
 
 .primaryButton:hover:not(:disabled) {

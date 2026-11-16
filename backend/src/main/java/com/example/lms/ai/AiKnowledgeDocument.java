@@ -43,7 +43,7 @@ public class AiKnowledgeDocument {
     @Column(name = "source_uri", length = 1000)
     private String sourceUri;
 
-    @Column(name = "content_hash", length = 64)
+    @Column(name = "content_hash", columnDefinition = "CHAR(64)")
     private String contentHash;
 
     @Column(name = "language_code", length = 10)

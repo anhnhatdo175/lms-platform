@@ -175,6 +175,67 @@ export async function getTeacherCourse(accessToken: string, courseId: number): P
   return requestData<ManagedCourse>(`/teacher/courses/${courseId}`, accessToken);
 }
 
+export async function updateTeacherCourse(
+  accessToken: string,
+  courseId: number,
+  changes: { thumbnailResourceId?: number },
+): Promise<ManagedCourse> {
+  return requestData<ManagedCourse>(`/teacher/courses/${courseId}`, accessToken, {
+    method: 'PATCH',
+    body: JSON.stringify(changes),
+  });
+}
+
+export interface CourseReviewRequestSummary {
+  id: number;
+  courseId: number;
+  courseTitle: string;
+  teacherId: number;
+  teacherName: string;
+  status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'WITHDRAWN';
+  submittedAt: string;
+}
+
+export async function submitCourseReview(
+  accessToken: string,
+  courseId: number,
+  note?: string,
+): Promise<CourseReviewRequestSummary> {
+  return requestData<CourseReviewRequestSummary>(`/teacher/courses/${courseId}/submit-review`, accessToken, {
+    method: 'POST',
+    body: JSON.stringify(note ? { note } : {}),
+  });
+}
+
+export async function withdrawCourseReview(accessToken: string, courseId: number): Promise<void> {
+  await requestData<unknown>(`/teacher/courses/${courseId}/withdraw-review`, accessToken, { method: 'POST' });
+}
+
+export async function reopenCourse(accessToken: string, courseId: number): Promise<void> {
+  await requestData<unknown>(`/teacher/courses/${courseId}/reopen`, accessToken, { method: 'POST' });
+}
+
+export async function listCourseReviewRequests(
+  accessToken: string,
+): Promise<{ data: CourseReviewRequestSummary[]; meta: PageMeta }> {
+  return request<{ data: CourseReviewRequestSummary[]; meta: PageMeta }>(
+    '/admin/course-review-requests?status=PENDING&page=0&size=100&sort=submittedAt,asc',
+    accessToken,
+  );
+}
+
+export async function decideCourseReview(
+  accessToken: string,
+  courseId: number,
+  decision: 'approve' | 'reject',
+  reason?: string,
+): Promise<void> {
+  await requestData<unknown>(`/admin/courses/${courseId}/${decision}`, accessToken, {
+    method: 'POST',
+    body: JSON.stringify(decision === 'reject' ? { reason } : {}),
+  });
+}
+
 export async function createSection(
   accessToken: string,
   courseId: number,

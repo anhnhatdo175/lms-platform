@@ -418,6 +418,18 @@
   font-size: 13px;
 }
 
+.courseWorkflowActions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.courseWorkflowActions .secondaryButton {
+  cursor: pointer;
+}
+
 .contractNotice,
 .readOnlyNotice,
 .errorNotice,

@@ -2,17 +2,23 @@ import { useEffect, useState, type FormEvent } from 'react';
 import { ApiRequestError } from '../services/authApi';
 import {
   createCourseCategory,
+  decideCourseReview,
+  listCourseReviewRequests,
   listAdminCourseCategories,
   updateCourseCategory,
   type AdminCourseCategory,
+  type CourseReviewRequestSummary,
 } from '../services/courseApi';
 import styles from './CourseCategoriesPage.module.css';
 
 export function CourseCategoriesPage({ accessToken }: { accessToken: string }) {
   const [categories, setCategories] = useState<AdminCourseCategory[]>([]);
+  const [reviewRequests, setReviewRequests] = useState<CourseReviewRequestSummary[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isLoadingReviews, setIsLoadingReviews] = useState(true);
   const [isCreating, setIsCreating] = useState(false);
   const [busyCategoryId, setBusyCategoryId] = useState<number | null>(null);
+  const [busyReviewCourseId, setBusyReviewCourseId] = useState<number | null>(null);
   const [notice, setNotice] = useState<{ message: string; error: boolean } | null>(null);
 
   useEffect(() => {
@@ -33,6 +39,31 @@ export function CourseCategoriesPage({ accessToken }: { accessToken: string }) {
       })
       .finally(() => {
         if (active) setIsLoading(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [accessToken]);
+
+  useEffect(() => {
+    let active = true;
+    listCourseReviewRequests(accessToken)
+      .then((page) => {
+        if (active) setReviewRequests(page.data);
+      })
+      .catch((error: unknown) => {
+        if (active) {
+          setNotice({
+            message: error instanceof ApiRequestError
+              ? error.message
+              : 'Không thể tải các yêu cầu duyệt khóa học.',
+            error: true,
+          });
+        }
+      })
+      .finally(() => {
+        if (active) setIsLoadingReviews(false);
       });
 
     return () => {
@@ -90,6 +121,32 @@ export function CourseCategoriesPage({ accessToken }: { accessToken: string }) {
     }
   }
 
+  async function decideReview(request: CourseReviewRequestSummary, decision: 'approve' | 'reject') {
+    const reason = decision === 'reject'
+      ? window.prompt(`Nhập lý do từ chối khóa học "${request.courseTitle}":`)
+      : undefined;
+    if (decision === 'reject' && !reason?.trim()) return;
+
+    setBusyReviewCourseId(request.courseId);
+    setNotice(null);
+    try {
+      await decideCourseReview(accessToken, request.courseId, decision, reason?.trim());
+      const page = await listCourseReviewRequests(accessToken);
+      setReviewRequests(page.data);
+      setNotice({
+        message: decision === 'approve' ? 'Đã duyệt và xuất bản khóa học.' : 'Đã từ chối khóa học.',
+        error: false,
+      });
+    } catch (error) {
+      setNotice({
+        message: error instanceof ApiRequestError ? error.message : 'Không thể xử lý yêu cầu duyệt.',
+        error: true,
+      });
+    } finally {
+      setBusyReviewCourseId(null);
+    }
+  }
+
   return (
     <section className={styles.page} aria-labelledby="course-categories-title">
       <header className={styles.heading}>
@@ -105,6 +162,48 @@ export function CourseCategoriesPage({ accessToken }: { accessToken: string }) {
           {notice.message}
         </div>
       )}
+
+      <section className={styles.card} aria-labelledby="course-review-title">
+        <div className={styles.cardHeading}>
+          <h2 id="course-review-title">Yêu cầu duyệt khóa học <span>{reviewRequests.length}</span></h2>
+          <p>Duyệt sẽ xuất bản ngay; từ chối cần ghi rõ lý do để giảng viên xem và mở lại khóa học.</p>
+        </div>
+        {isLoadingReviews ? (
+          <p className={styles.emptyState}>Đang tải yêu cầu duyệt...</p>
+        ) : reviewRequests.length === 0 ? (
+          <p className={styles.emptyState}>Hiện không có khóa học nào chờ duyệt.</p>
+        ) : (
+          <ul className={styles.categoryList}>
+            {reviewRequests.map((request) => (
+              <li className={styles.categoryRow} key={request.id}>
+                <div className={styles.categoryInfo}>
+                  <strong>{request.courseTitle}</strong>
+                  <span>Giảng viên: {request.teacherName}</span>
+                  <small>Gửi lúc {new Date(request.submittedAt).toLocaleString('vi-VN')}</small>
+                </div>
+                <div className={styles.categoryActions}>
+                  <button
+                    className={styles.primaryButton}
+                    disabled={busyReviewCourseId === request.courseId}
+                    onClick={() => void decideReview(request, 'approve')}
+                    type="button"
+                  >
+                    {busyReviewCourseId === request.courseId ? 'Đang xử lý...' : 'Duyệt & xuất bản'}
+                  </button>
+                  <button
+                    className={styles.secondaryButton}
+                    disabled={busyReviewCourseId === request.courseId}
+                    onClick={() => void decideReview(request, 'reject')}
+                    type="button"
+                  >
+                    Từ chối
+                  </button>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
 
       <div className={styles.layout}>
         <form className={styles.card} onSubmit={(event) => void submitCategory(event)}>

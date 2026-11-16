@@ -22,6 +22,7 @@ CREATE TABLE file_resources (
     mime_type        VARCHAR(100)    NOT NULL,
     file_size        BIGINT UNSIGNED NOT NULL,
     storage_provider ENUM('MINIO','S3','R2') NOT NULL,
+    purpose          ENUM('USER_AVATAR','COURSE_THUMBNAIL','LESSON_RESOURCE') NOT NULL,
     status           ENUM('PENDING','READY','FAILED','DELETED') NOT NULL DEFAULT 'READY',
     checksum         VARCHAR(128)    NULL,
     created_at       DATETIME(6)     NOT NULL,
@@ -29,9 +30,16 @@ CREATE TABLE file_resources (
     PRIMARY KEY (id),
     CONSTRAINT uk_file_resources_object_key UNIQUE (object_key),
     KEY idx_file_resources_checksum (checksum),
+    KEY idx_file_resources_purpose_status (purpose, status),
     CONSTRAINT fk_file_resources_uploaded_by FOREIGN KEY (uploaded_by) REFERENCES users (id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
+ALTER TABLE users
+    ADD CONSTRAINT fk_users_avatar_file FOREIGN KEY (avatar_file_id)
+        REFERENCES file_resources (id) ON DELETE SET NULL;
+
+ALTER TABLE audit_logs
+    ADD COLUMN user_agent VARCHAR(500) NULL;
 
 CREATE TABLE course_categories (
     id          BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
@@ -89,6 +97,23 @@ CREATE TABLE course_teachers (
     CONSTRAINT fk_course_teachers_course      FOREIGN KEY (course_id)   REFERENCES courses (id),
     CONSTRAINT fk_course_teachers_teacher     FOREIGN KEY (teacher_id)  REFERENCES users (id),
     CONSTRAINT fk_course_teachers_assigned_by FOREIGN KEY (assigned_by) REFERENCES users (id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+CREATE TABLE course_review_requests (
+    id            BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    course_id     BIGINT UNSIGNED NOT NULL,
+    submitted_by  BIGINT UNSIGNED NOT NULL,
+    reviewed_by   BIGINT UNSIGNED NULL,
+    status        ENUM('PENDING','APPROVED','REJECTED','WITHDRAWN') NOT NULL,
+    submission_note TEXT NULL,
+    review_note   TEXT NULL,
+    submitted_at  DATETIME(6) NOT NULL,
+    reviewed_at   DATETIME(6) NULL,
+    created_at    DATETIME(6) NOT NULL,
+    PRIMARY KEY (id),
+    CONSTRAINT fk_course_reviews_course FOREIGN KEY (course_id) REFERENCES courses (id),
+    CONSTRAINT fk_course_reviews_submitter FOREIGN KEY (submitted_by) REFERENCES users (id),
+    CONSTRAINT fk_course_reviews_reviewer FOREIGN KEY (reviewed_by) REFERENCES users (id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 CREATE TABLE course_sections (

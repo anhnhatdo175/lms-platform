@@ -1,9 +1,11 @@
 package com.example.lms.course;
 
+import com.example.lms.audit.AuditLogService;
 import com.example.lms.auth.AuthException;
 import com.example.lms.auth.UserPrincipal;
 import com.example.lms.common.PageMeta;
 import com.example.lms.common.PageResponse;
+import com.example.lms.contract.course.CourseQueryService;
 import com.example.lms.file.FileStorageService;
 import com.example.lms.user.User;
 import com.example.lms.user.UserRepository;
@@ -17,9 +19,14 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Set;
+import java.util.LinkedHashMap;
+import java.util.Map;
+import java.util.Collection;
+import java.util.List;
+import java.util.Optional;
 
 @Service
-public class CourseService {
+public class CourseService implements CourseQueryService {
 
     private static final Set<String> UPDATE_FIELDS = Set.of(
             "title",
@@ -36,21 +43,64 @@ public class CourseService {
 
     private final CourseRepository courseRepository;
     private final CourseCategoryRepository categoryRepository;
+    private final CourseReviewRequestRepository reviewRequestRepository;
     private final CourseTeacherRepository courseTeacherRepository;
+    private final LessonRepository lessonRepository;
     private final UserRepository userRepository;
     private final FileStorageService fileStorageService;
+    private final AuditLogService auditLogService;
 
     public CourseService(
             CourseRepository courseRepository,
             CourseCategoryRepository categoryRepository,
+            CourseReviewRequestRepository reviewRequestRepository,
             CourseTeacherRepository courseTeacherRepository,
+            LessonRepository lessonRepository,
             UserRepository userRepository,
-            FileStorageService fileStorageService) {
+            FileStorageService fileStorageService,
+            AuditLogService auditLogService) {
         this.courseRepository = courseRepository;
         this.categoryRepository = categoryRepository;
+        this.reviewRequestRepository = reviewRequestRepository;
         this.courseTeacherRepository = courseTeacherRepository;
+        this.lessonRepository = lessonRepository;
         this.userRepository = userRepository;
         this.fileStorageService = fileStorageService;
+        this.auditLogService = auditLogService;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Optional<CourseSnapshot> findCourse(long courseId) {
+        return courseRepository.findById(courseId).map(this::courseSnapshot);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<CourseSnapshot> findCourses(Collection<Long> courseIds) {
+        return courseRepository.findAllById(courseIds).stream().map(this::courseSnapshot).toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Optional<LessonRef> findLesson(long lessonId) {
+        return lessonRepository.findById(lessonId).map(lesson -> new LessonRef(
+                lesson.getId(),
+                lesson.getSection().getCourse().getId(),
+                lesson.getSection().getId(),
+                lesson.getLessonType().name(),
+                lesson.getTitle()));
+    }
+
+    private CourseSnapshot courseSnapshot(Course course) {
+        return new CourseSnapshot(
+                course.getId(),
+                course.getSlug(),
+                course.getTitle(),
+                course.getSalePrice(),
+                course.getAccessDurationDays(),
+                course.getStatus() == CourseStatus.PUBLISHED,
+                fileStorageService.courseThumbnailUrl(course.getThumbnailFileId()));
     }
 
     @Transactional
@@ -124,6 +174,7 @@ public class CourseService {
         }
         validateUpdateFields(changes);
 
+        Map<String, Object> oldValues = courseValues(course);
         String title = stringValue(changes, "title", course.getTitle(), false, 255);
         String shortDescription = stringValue(
                 changes, "shortDescription", course.getShortDescription(), true, 500);
@@ -160,7 +211,26 @@ public class CourseService {
                 gradeLevel,
                 accessDurationDays,
                 completionRule);
-        return summarize(courseRepository.saveAndFlush(course));
+        Course updated = courseRepository.saveAndFlush(course);
+        if (updated.getStatus() == CourseStatus.PUBLISHED) {
+            Map<String, Object> newValues = courseValues(updated);
+            if (!oldValues.equals(newValues)) {
+                User actor = userRepository.findById(principal.id())
+                        .orElseThrow(() -> new AuthException(
+                                "USER_NOT_FOUND", "Không tìm thấy người dùng.", HttpStatus.NOT_FOUND));
+                auditLogService.record(
+                        actor,
+                        "PUBLISHED_COURSE_UPDATED",
+                        "Course",
+                        updated.getId(),
+                        null,
+                        null,
+                        oldValues,
+                        newValues,
+                        null);
+            }
+        }
+        return summarize(updated);
     }
 
     private Course requireTeacherCourse(Long teacherId, Long courseId) {
@@ -176,11 +246,34 @@ public class CourseService {
                         "INVALID_CATEGORY", "Danh mục không tồn tại hoặc đã bị tắt.", HttpStatus.UNPROCESSABLE_ENTITY));
     }
 
-    private CourseManaged summarize(Course course) {
+    CourseManaged summarize(Course course) {
+        String lastReviewNote = (course.getStatus() == CourseStatus.DRAFT
+                || course.getStatus() == CourseStatus.REJECTED)
+                ? reviewRequestRepository.findFirstByCourse_IdAndStatusOrderBySubmittedAtDesc(
+                        course.getId(), CourseReviewStatus.REJECTED)
+                        .map(CourseReviewRequest::getReviewNote)
+                        .orElse(null)
+                : null;
         return CourseManaged.from(
                 course,
                 fileStorageService.courseThumbnailUrl(course.getThumbnailFileId()),
-                null);
+                lastReviewNote);
+    }
+
+    private static Map<String, Object> courseValues(Course course) {
+        Map<String, Object> values = new LinkedHashMap<>();
+        values.put("title", course.getTitle());
+        values.put("shortDescription", course.getShortDescription());
+        values.put("description", course.getDescription());
+        values.put("categoryId", course.getCategory().getId());
+        values.put("originalPrice", course.getOriginalPrice());
+        values.put("salePrice", course.getSalePrice());
+        values.put("thumbnailResourceId", course.getThumbnailFileId());
+        values.put("subjectCode", course.getSubjectCode());
+        values.put("gradeLevel", course.getGradeLevel());
+        values.put("accessDurationDays", course.getAccessDurationDays());
+        values.put("completionRule", course.getCompletionRule().name());
+        return values;
     }
 
     private static void validateUpdateFields(JsonNode changes) {
