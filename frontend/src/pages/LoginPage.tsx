@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type ChangeEvent, type FormEvent } from 'react';
+import { Navigate, Route, Routes, useNavigate } from 'react-router';
 import {
   ApiRequestError,
   changePassword,
@@ -17,11 +18,15 @@ import {
   type AuthUser,
   type UserRole,
 } from '../services/authApi';
+import { setAccessToken as setApiAccessToken } from '../lib/api-client';
 import { Avatar } from '../components/ui/Avatar';
+import { studentRoutesB, adminRoutesB } from '../features/routes.b';
 import { UsersPage } from './UsersPage';
 import { AuditLogsPage } from './AuditLogsPage';
 import { CourseAuthoringPage } from './CourseAuthoringPage';
 import { CourseCategoriesPage } from './CourseCategoriesPage';
+import { CourseCatalogPage } from './CourseCatalogPage';
+import { CourseLearningPage, LessonLearningPage } from './CourseLearningPage';
 import areaStyles from './UserArea.module.css';
 import styles from './LoginPage.module.css';
 
@@ -38,6 +43,10 @@ export function LoginPage() {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [accessToken, setAccessToken] = useState<string | null>(null);
   const [expiresIn, setExpiresIn] = useState<number | null>(null);
+
+  useEffect(() => {
+    setApiAccessToken(accessToken);
+  }, [accessToken]);
 
   useEffect(() => {
     if (resetToken) return;
@@ -538,6 +547,7 @@ function AuthenticatedArea({
   onUserUpdate: (user: AuthUser) => void;
   user: AuthUser;
 }) {
+  const navigate = useNavigate();
   const [activeSection, setActiveSection] = useState<
     'profile' | 'security' | 'users' | 'audit' | 'courses' | 'course-categories'
   >('profile');
@@ -553,6 +563,11 @@ function AuthenticatedArea({
   const [loadedAvatar, setLoadedAvatar] = useState<{ id: number; url: string } | null>(null);
   const avatarInputRef = useRef<HTMLInputElement>(null);
   const avatarUrl = loadedAvatar?.id === user.avatarResourceId ? loadedAvatar.url : undefined;
+
+  function selectSection(section: 'profile' | 'security' | 'users' | 'audit' | 'courses' | 'course-categories') {
+    setActiveSection(section);
+    void navigate('/');
+  }
 
   useEffect(() => {
     if (!user.avatarResourceId) return undefined;
@@ -746,7 +761,7 @@ function AuthenticatedArea({
         <button
           aria-current={activeSection === 'profile' ? 'page' : undefined}
           className={activeSection === 'profile' ? areaStyles.activeNav : ''}
-          onClick={() => setActiveSection('profile')}
+          onClick={() => selectSection('profile')}
           type="button"
         >
           Hồ sơ của tôi
@@ -754,7 +769,7 @@ function AuthenticatedArea({
         <button
           aria-current={activeSection === 'security' ? 'page' : undefined}
           className={activeSection === 'security' ? areaStyles.activeNav : ''}
-          onClick={() => setActiveSection('security')}
+          onClick={() => selectSection('security')}
           type="button"
         >
           Bảo mật
@@ -763,7 +778,7 @@ function AuthenticatedArea({
           <button
             aria-current={activeSection === 'courses' ? 'page' : undefined}
             className={activeSection === 'courses' ? areaStyles.activeNav : ''}
-            onClick={() => setActiveSection('courses')}
+            onClick={() => selectSection('courses')}
             type="button"
           >
             Soạn khóa học
@@ -774,15 +789,15 @@ function AuthenticatedArea({
             <button
               aria-current={activeSection === 'course-categories' ? 'page' : undefined}
               className={activeSection === 'course-categories' ? areaStyles.activeNav : ''}
-              onClick={() => setActiveSection('course-categories')}
+              onClick={() => selectSection('course-categories')}
               type="button"
             >
-              Danh mục khóa học
+              Danh mục & duyệt khóa học
             </button>
             <button
               aria-current={activeSection === 'users' ? 'page' : undefined}
               className={activeSection === 'users' ? areaStyles.activeNav : ''}
-              onClick={() => setActiveSection('users')}
+              onClick={() => selectSection('users')}
               type="button"
             >
               Quản lý người dùng
@@ -790,10 +805,30 @@ function AuthenticatedArea({
             <button
               aria-current={activeSection === 'audit' ? 'page' : undefined}
               className={activeSection === 'audit' ? areaStyles.activeNav : ''}
-              onClick={() => setActiveSection('audit')}
+              onClick={() => selectSection('audit')}
               type="button"
             >
               Nhật ký hoạt động
+            </button>
+          </>
+        )}
+        {user.roles.includes('STUDENT') && (
+          <>
+            <button
+              aria-current={window.location.pathname === '/courses' ? 'page' : undefined}
+              className={window.location.pathname === '/courses' ? areaStyles.activeNav : ''}
+              onClick={() => void navigate('/courses')}
+              type="button"
+            >
+              Khám phá khóa học
+            </button>
+            <button
+              aria-current={window.location.pathname === '/my-courses' ? 'page' : undefined}
+              className={window.location.pathname === '/my-courses' ? areaStyles.activeNav : ''}
+              onClick={() => void navigate('/my-courses')}
+              type="button"
+            >
+              Khóa học của tôi
             </button>
           </>
         )}
@@ -803,15 +838,48 @@ function AuthenticatedArea({
         {notice && <div className={areaStyles.errorNotice} role="alert">{notice}</div>}
         {profileNotice && <div className={areaStyles.successNotice} role="status">{profileNotice}</div>}
 
-        {activeSection === 'course-categories' && user.roles.includes('ADMIN') ? (
-          <CourseCategoriesPage accessToken={accessToken} />
-        ) : activeSection === 'courses' && user.roles.includes('TEACHER') ? (
-          <CourseAuthoringPage accessToken={accessToken} />
-        ) : activeSection === 'users' && user.roles.includes('ADMIN') ? (
-          <UsersPage accessToken={accessToken} currentUserId={user.id} />
-        ) : activeSection === 'audit' && user.roles.includes('ADMIN') ? (
-          <AuditLogsPage accessToken={accessToken} />
-        ) : activeSection === 'security' ? (
+        <Routes>
+          <Route
+            path="/courses"
+            element={<CourseCatalogPage accessToken={accessToken} canPurchase={user.roles.includes('STUDENT')} />}
+          />
+          <Route
+            path="/learning/courses/:courseId"
+            element={user.roles.includes('STUDENT')
+              ? <CourseLearningPage accessToken={accessToken} />
+              : <Navigate to="/" replace />}
+          />
+          <Route
+            path="/learning/lessons/:lessonId"
+            element={user.roles.includes('STUDENT')
+              ? <LessonLearningPage accessToken={accessToken} />
+              : <Navigate to="/" replace />}
+          />
+          {studentRoutesB.map((route) => (
+            <Route
+              key={route.path}
+              path={route.path}
+              element={user.roles.includes('STUDENT') ? route.element : <Navigate to="/" replace />}
+            />
+          ))}
+          {adminRoutesB.map((route) => (
+            <Route
+              key={route.path}
+              path={route.path}
+              element={user.roles.includes('ADMIN') ? route.element : <Navigate to="/" replace />}
+            />
+          ))}
+          <Route
+            path="*"
+            element={activeSection === 'course-categories' && user.roles.includes('ADMIN') ? (
+              <CourseCategoriesPage accessToken={accessToken} />
+            ) : activeSection === 'courses' && user.roles.includes('TEACHER') ? (
+              <CourseAuthoringPage accessToken={accessToken} />
+            ) : activeSection === 'users' && user.roles.includes('ADMIN') ? (
+              <UsersPage accessToken={accessToken} currentUserId={user.id} />
+            ) : activeSection === 'audit' && user.roles.includes('ADMIN') ? (
+              <AuditLogsPage accessToken={accessToken} />
+            ) : activeSection === 'security' ? (
           <section className={areaStyles.profilePage} aria-labelledby="security-title">
             <div className={areaStyles.pageHeading}>
               <p className={areaStyles.eyebrow}>BẢO VỆ TÀI KHOẢN</p>
@@ -882,7 +950,7 @@ function AuthenticatedArea({
               </div>
             </form>
           </section>
-        ) : (
+            ) : (
           <section className={areaStyles.profilePage} aria-labelledby="profile-title">
             <div className={areaStyles.pageHeading}>
               <p className={areaStyles.eyebrow}>TÀI KHOẢN CỦA BẠN</p>
@@ -987,7 +1055,9 @@ function AuthenticatedArea({
             </div>
 
           </section>
-        )}
+            )}
+          />
+        </Routes>
       </main>
       <footer className={areaStyles.appFooter}>
         <span>© {new Date().getFullYear()} LMS Platform</span>

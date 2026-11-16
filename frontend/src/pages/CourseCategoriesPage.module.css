@@ -155,8 +155,9 @@
 }
 
 .categoryRow {
-  display: flex;
-  align-items: center;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
   justify-content: space-between;
   gap: 14px;
   padding-block: 14px;
@@ -189,6 +190,44 @@
   flex: 0 0 auto;
   justify-items: end;
   gap: 8px;
+}
+
+.reviewRejectForm {
+  display: grid;
+  grid-column: 1 / -1;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid #e0e9e6;
+  border-radius: 8px;
+  background: #f8fbfa;
+}
+
+.reviewRejectForm .field {
+  margin-top: 0;
+}
+
+.reviewRejectForm textarea {
+  width: 100%;
+  min-height: 88px;
+  padding: 10px 12px;
+  border: 1px solid #d5e0dc;
+  border-radius: 7px;
+  outline: none;
+  background: #fff;
+  color: #243f3a;
+  font-size: 14px;
+  resize: vertical;
+}
+
+.reviewRejectForm textarea:focus {
+  border-color: #0d9488;
+  box-shadow: 0 0 0 3px rgb(13 148 136 / 13%);
+}
+
+.reviewRejectForm .categoryActions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-start;
 }
 
 .activeBadge,
@@ -236,8 +275,7 @@
 
 @media (max-width: 480px) {
   .categoryRow {
-    align-items: flex-start;
-    flex-direction: column;
+    align-items: start;
   }
   .categoryActions {
     justify-items: start;

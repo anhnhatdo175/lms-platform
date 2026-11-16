@@ -91,6 +91,130 @@ export interface LessonDetail {
   updatedAt: string;
 }
 
+export interface CourseCatalogSummary {
+  id: number;
+  slug: string;
+  title: string;
+  shortDescription: string | null;
+  thumbnailUrl: string | null;
+  status: CourseStatus;
+  createdAt: string;
+  originalPrice: number;
+  salePrice: number;
+  category: CourseCategory;
+  subjectCode: string | null;
+  gradeLevel: string | null;
+  publishedAt: string | null;
+}
+
+export interface CourseCatalogDetail extends CourseCatalogSummary {
+  description: string | null;
+  teachers: Array<{ id: number; displayName: string }>;
+  sections: Array<{
+    id: number;
+    title: string;
+    description: string | null;
+    position: number;
+    releaseAfterDays: number;
+    lessons: Array<{
+      id: number;
+      title: string;
+      lessonType: LessonType;
+      position: number;
+      durationSeconds: number | null;
+      preview: boolean;
+      mandatory: boolean;
+      published: boolean;
+    }>;
+  }>;
+  accessDurationDays: number | null;
+  completionRule: CourseCompletionRule;
+}
+
+export interface MyCourseSummary {
+  id: number;
+  courseId: number;
+  courseSlug: string;
+  courseTitle: string;
+  status: 'ACTIVE' | 'EXPIRED' | 'REVOKED';
+  enrolledAt: string;
+  progressPercent: number | null;
+  expiresAt: string | null;
+  source: 'PURCHASE' | 'RENEWAL' | 'ADMIN_GRANTED';
+}
+
+export interface CourseLearningProgress {
+  courseId: number;
+  totalLessons: number;
+  completedLessons: number;
+  progressPercent: number;
+  lastAccessedAt: string | null;
+  completedAt: string | null;
+}
+
+export interface CourseOutlineLesson {
+  id: number;
+  title: string;
+  lessonType: LessonType;
+  position: number;
+  durationSeconds: number | null;
+  mandatory: boolean;
+  status: 'NOT_STARTED' | 'IN_PROGRESS' | 'COMPLETED';
+  completedAt: string | null;
+  access: {
+    state: 'AVAILABLE' | 'LOCKED_BY_PREREQUISITE' | 'LOCKED_UNTIL_RELEASE';
+    releaseAt: string | null;
+    prerequisite: { lessonId: number | null; examId: number | null; conditionType: string } | null;
+  };
+}
+
+export interface CourseOutlineSection {
+  id: number;
+  title: string;
+  position: number;
+  releaseAt: string | null;
+  lessons: CourseOutlineLesson[];
+}
+
+export interface MyCourseDetail {
+  enrollment: MyCourseSummary;
+  progress: CourseLearningProgress;
+  sections: CourseOutlineSection[];
+}
+
+export interface LessonLearningView {
+  id: number;
+  courseId: number;
+  sectionId: number;
+  title: string;
+  description: string | null;
+  content: string | null;
+  lessonType: LessonType;
+  position: number;
+  videoUrl: string | null;
+  videoUrlExpiresAt: string | null;
+  durationSeconds: number | null;
+  mandatory: boolean;
+  completionMethod: CompletionMethod;
+  completionThreshold: number | null;
+  examId: number | null;
+  resources: Array<{
+    id: number;
+    resourceId: number;
+    title: string;
+    resourceType: string;
+    downloadable: boolean;
+    url: string | null;
+    position: number;
+  }>;
+  progress: {
+    status: 'NOT_STARTED' | 'IN_PROGRESS' | 'COMPLETED';
+    progressSeconds: number;
+    progressPercent: number;
+    completedAt: string | null;
+  };
+}
+
 interface PageMeta {
   page: number;
   size: number;
@@ -123,6 +247,73 @@ export async function listTeacherCourses(accessToken: string): Promise<PageRespo
 
 export async function listCourseCategories(accessToken: string): Promise<CourseCategory[]> {
   return requestData<CourseCategory[]>('/categories', accessToken);
+}
+
+export async function listCourseCatalog(
+  accessToken: string,
+  filters: {
+    q?: string;
+    categoryId?: number;
+    minPrice?: number;
+    maxPrice?: number;
+    page?: number;
+    size?: number;
+    sort?: 'newest' | 'price_asc' | 'price_desc';
+  } = {},
+): Promise<PageResponse<CourseCatalogSummary>> {
+  const query = new URLSearchParams();
+  Object.entries(filters).forEach(([key, value]) => {
+    if (value !== undefined && value !== '') query.set(key, String(value));
+  });
+  return request<PageResponse<CourseCatalogSummary>>(`/courses?${query}`, accessToken);
+}
+
+export async function getCatalogCourse(
+  accessToken: string,
+  slug: string,
+): Promise<CourseCatalogDetail> {
+  return requestData<CourseCatalogDetail>(`/courses/${encodeURIComponent(slug)}`, accessToken);
+}
+
+export async function listMyCourses(accessToken: string, page = 0): Promise<PageResponse<MyCourseSummary>> {
+  return request<PageResponse<MyCourseSummary>>(`/my-courses?page=${page}&size=12`, accessToken);
+}
+
+export async function getMyCourse(accessToken: string, courseId: number): Promise<MyCourseDetail> {
+  return requestData<MyCourseDetail>(`/my-courses/${courseId}`, accessToken);
+}
+
+export async function getLearningLesson(accessToken: string, lessonId: number): Promise<LessonLearningView> {
+  return requestData<LessonLearningView>(`/learning/lessons/${lessonId}`, accessToken);
+}
+
+export async function sendLessonHeartbeat(
+  accessToken: string,
+  lessonId: number,
+  positionSeconds: number,
+  clientEventId: string,
+): Promise<{
+  lessonId: number;
+  progressSeconds: number;
+  progressPercent: number;
+  status: 'NOT_STARTED' | 'IN_PROGRESS' | 'COMPLETED';
+  completed: boolean;
+}> {
+  return requestData(`/learning/lessons/${lessonId}/heartbeat`, accessToken, {
+    method: 'POST',
+    body: JSON.stringify({ positionSeconds, clientEventId }),
+  });
+}
+
+export async function completeLearningLesson(
+  accessToken: string,
+  lessonId: number,
+  clientEventId: string,
+): Promise<{ lessonId: number; status: 'NOT_STARTED' | 'IN_PROGRESS' | 'COMPLETED'; completedAt: string | null }> {
+  return requestData(`/learning/lessons/${lessonId}/complete`, accessToken, {
+    method: 'POST',
+    body: JSON.stringify({ clientEventId }),
+  });
 }
 
 export async function listAdminCourseCategories(accessToken: string): Promise<PageResponse<AdminCourseCategory>> {
