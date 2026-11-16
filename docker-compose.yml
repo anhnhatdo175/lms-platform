@@ -43,6 +43,49 @@ services:
       - lms-network
 
   # ========================
+  # Qdrant vector store (AI document chunks)
+  # ========================
+  qdrant:
+    image: qdrant/qdrant:v1.12.4
+    container_name: lms-qdrant
+    restart: unless-stopped
+    ports:
+      - "6333:6333"
+    volumes:
+      - qdrant_data:/qdrant/storage
+    networks:
+      - lms-network
+
+  # ========================
+  # AI service (Python, stateless; Spring owns permissions and MySQL)
+  # LLM_BACKEND=fake and EMBEDDER=hash need no API key or model download.
+  # For real use: LLM_BACKEND=openai + LLM_API_KEY, EMBEDDER=e5 and build with AI_WITH_E5=true.
+  # ========================
+  ai-service:
+    build:
+      context: ./ai-service
+      dockerfile: Dockerfile
+      args:
+        WITH_E5: ${AI_WITH_E5:-false}
+    container_name: lms-ai-service
+    restart: unless-stopped
+    environment:
+      LLM_BACKEND: ${AI_LLM_BACKEND:-fake}
+      LLM_BASE_URL: ${AI_LLM_BASE_URL:-https://api.openai.com/v1}
+      LLM_API_KEY: ${AI_LLM_API_KEY:-}
+      LLM_MODEL: ${AI_LLM_MODEL:-}
+      EMBEDDER: ${AI_EMBEDDER:-hash}
+      EMBED_MODEL: ${AI_EMBED_MODEL:-intfloat/multilingual-e5-base}
+      QDRANT_URL: http://qdrant:6333
+      AI_SERVICE_TOKEN: ${AI_SERVICE_TOKEN:-}
+    ports:
+      - "8000:8000"
+    depends_on:
+      - qdrant
+    networks:
+      - lms-network
+
+  # ========================
   # Spring Boot Backend
   # ========================
   backend:
@@ -122,6 +165,7 @@ services:
 volumes:
   db_data:
   minio_data:
+  qdrant_data:
 
 networks:
   lms-network:
