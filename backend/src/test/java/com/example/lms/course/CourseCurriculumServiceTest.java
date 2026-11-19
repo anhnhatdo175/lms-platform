@@ -2,6 +2,7 @@ package com.example.lms.course;
 
 import com.example.lms.auth.AuthException;
 import com.example.lms.auth.UserPrincipal;
+import com.example.lms.exam.Exam;
 import com.example.lms.exam.ExamRepository;
 import com.example.lms.file.FileStorageService;
 import com.example.lms.user.User;
@@ -22,6 +23,60 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 class CourseCurriculumServiceTest {
+
+    @Test
+    void getCurriculumReturnsSavedSectionsAndLessonsForAssignedTeacher() {
+        CourseRepository courses = mock(CourseRepository.class);
+        CourseSectionRepository sections = mock(CourseSectionRepository.class);
+        LessonRepository lessons = mock(LessonRepository.class);
+        LessonResourceRepository resources = mock(LessonResourceRepository.class);
+        ExamRepository exams = mock(ExamRepository.class);
+        Course course = courseWithId(10L);
+        CourseSection section = section(course, 101L, 1);
+        Lesson lesson = lesson(section, 201L, 1);
+        Exam exam = mock(Exam.class);
+        when(exam.getId()).thenReturn(301L);
+        when(courses.findTeacherCourse(10L, 1L)).thenReturn(Optional.of(course));
+        when(sections.findAllByCourse_IdOrderByPositionAscIdAsc(10L)).thenReturn(List.of(section));
+        when(lessons.findAllByCourseIdOrderBySectionAndPosition(10L)).thenReturn(List.of(lesson));
+        when(resources.findAllByLesson_IdOrderByPositionAscIdAsc(201L)).thenReturn(List.of());
+        when(exams.findByLessonId(201L)).thenReturn(Optional.of(exam));
+
+        CourseCurriculumService service = new CourseCurriculumService(
+                courses,
+                sections,
+                lessons,
+                resources,
+                mock(LessonPrerequisiteRepository.class),
+                exams,
+                mock(FileStorageService.class));
+
+        TeacherCurriculumView curriculum = service.getCurriculum(principal(), 10L);
+
+        assertThat(curriculum.sections()).hasSize(1);
+        assertThat(curriculum.sections().getFirst().section().id()).isEqualTo(101L);
+        assertThat(curriculum.sections().getFirst().lessons()).singleElement()
+                .satisfies(item -> {
+                    assertThat(item.id()).isEqualTo(201L);
+                    assertThat(item.title()).isEqualTo("Lesson");
+                    assertThat(item.examId()).isEqualTo(301L);
+                });
+        verify(courses).findTeacherCourse(10L, 1L);
+    }
+
+    @Test
+    void getCurriculumDoesNotExposeCourseNotAssignedToTeacher() {
+        CourseRepository courses = mock(CourseRepository.class);
+        when(courses.findTeacherCourse(10L, 1L)).thenReturn(Optional.empty());
+        CourseCurriculumService service = service(
+                courses,
+                mock(CourseSectionRepository.class),
+                mock(LessonRepository.class),
+                mock(LessonPrerequisiteRepository.class));
+
+        assertThatThrownBy(() -> service.getCurriculum(principal(), 10L))
+                .isInstanceOf(AuthException.class);
+    }
 
     @Test
     void reorderRequiresEverySectionAndLessonAndMovesItemsToRequestedPositions() {

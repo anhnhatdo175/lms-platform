@@ -12,6 +12,7 @@ import {
   deleteLesson,
   deleteSection,
   getTeacherCourse,
+  getTeacherCurriculum,
   listCourseCategories,
   listTeacherCourses,
   reopenCourse,
@@ -179,11 +180,19 @@ export function CourseAuthoringPage({ accessToken }: CourseAuthoringPageProps) {
     setBusyKey(`course-${courseId}`);
     setNotice(null);
     try {
-      const course = await getTeacherCourse(accessToken, courseId);
+      const [course, curriculum] = await Promise.all([
+        getTeacherCourse(accessToken, courseId),
+        getTeacherCurriculum(accessToken, courseId),
+      ]);
       setSelectedCourse(course);
-      if (!(courseId in sectionsByCourse)) {
-        setSectionsByCourse((current) => ({ ...current, [courseId]: [] }));
-      }
+      setSectionsByCourse((current) => ({
+        ...current,
+        [courseId]: curriculum.sections.map(({ section }) => section),
+      }));
+      setLessonsBySection((current) => ({
+        ...current,
+        ...Object.fromEntries(curriculum.sections.map(({ section, lessons }) => [section.id, lessons])),
+      }));
     } catch (error) {
       setNotice({
         message: error instanceof ApiRequestError ? error.message : 'Không thể mở khóa học.',
@@ -659,11 +668,6 @@ export function CourseAuthoringPage({ accessToken }: CourseAuthoringPageProps) {
                   )}
                 </div>
               </section>
-
-              <div className={styles.contractNotice} role="note">
-                <strong>Lưu ý về dữ liệu chương trình học</strong>
-                <span>Contract hiện có API tạo/cập nhật/xóa chương và bài học nhưng chưa định nghĩa API đọc curriculum. Danh sách dưới đây chỉ giữ nội dung được tạo trong phiên trình duyệt này.</span>
-              </div>
 
               {selectedCourse.status !== 'DRAFT' && selectedCourse.status !== 'PUBLISHED' && selectedCourse.status !== 'HIDDEN' ? (
                 <div className={styles.readOnlyNotice} role="status">

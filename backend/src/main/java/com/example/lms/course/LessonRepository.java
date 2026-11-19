@@ -22,6 +22,8 @@ public interface LessonRepository extends JpaRepository<Lesson, Long> {
 
     List<Lesson> findAllBySection_IdAndPublishedTrueOrderByPositionAscIdAsc(Long sectionId);
 
+    List<Lesson> findAllBySection_IdOrderByPositionAscIdAsc(Long sectionId);
+
     @Query("""
             select lesson from Lesson lesson
             where lesson.section.course.id = :courseId

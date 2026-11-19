@@ -30,6 +30,10 @@ public record LessonDetail(
     }
 
     public static LessonDetail from(Lesson lesson, List<LessonResourceSummary> resources) {
+        return from(lesson, resources, null);
+    }
+
+    public static LessonDetail from(Lesson lesson, List<LessonResourceSummary> resources, Long examId) {
         return new LessonDetail(
                 lesson.getId(),
                 lesson.getSection().getId(),
@@ -46,7 +50,7 @@ public record LessonDetail(
                 lesson.getCompletionMethod(),
                 lesson.getCompletionThreshold(),
                 null,
-                null,
+                examId,
                 resources,
                 lesson.getCreatedAt(),
                 lesson.getUpdatedAt());

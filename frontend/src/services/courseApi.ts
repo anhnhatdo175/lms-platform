@@ -61,6 +61,11 @@ export interface SectionSummary {
   releaseAfterDays: number;
 }
 
+export interface TeacherCurriculumSection {
+  section: SectionSummary;
+  lessons: LessonDetail[];
+}
+
 export interface LessonDetail {
   id: number;
   sectionId: number;
@@ -364,6 +369,16 @@ export async function createCourse(
 
 export async function getTeacherCourse(accessToken: string, courseId: number): Promise<ManagedCourse> {
   return requestData<ManagedCourse>(`/teacher/courses/${courseId}`, accessToken);
+}
+
+export async function getTeacherCurriculum(
+  accessToken: string,
+  courseId: number,
+): Promise<{ sections: TeacherCurriculumSection[] }> {
+  return requestData<{ sections: TeacherCurriculumSection[] }>(
+    `/teacher/courses/${courseId}/curriculum`,
+    accessToken,
+  );
 }
 
 export async function updateTeacherCourse(

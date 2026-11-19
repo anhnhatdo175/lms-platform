@@ -19,6 +19,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 @Service
 public class CourseCurriculumService {
@@ -52,6 +53,28 @@ public class CourseCurriculumService {
         this.prerequisiteRepository = prerequisiteRepository;
         this.examRepository = examRepository;
         this.fileStorageService = fileStorageService;
+    }
+
+    @Transactional(readOnly = true)
+    public TeacherCurriculumView getCurriculum(UserPrincipal principal, Long courseId) {
+        requireTeacherCourse(principal.id(), courseId);
+        Map<Long, List<Lesson>> lessonsBySection = lessonRepository
+                .findAllByCourseIdOrderBySectionAndPosition(courseId)
+                .stream()
+                .collect(Collectors.groupingBy(
+                        lesson -> lesson.getSection().getId(),
+                        java.util.LinkedHashMap::new,
+                        Collectors.toList()));
+        List<TeacherCurriculumView.SectionView> result = sectionRepository
+                .findAllByCourse_IdOrderByPositionAscIdAsc(courseId)
+                .stream()
+                .map(section -> new TeacherCurriculumView.SectionView(
+                        SectionSummary.from(section),
+                        lessonsBySection.getOrDefault(section.getId(), List.of()).stream()
+                                .map(this::lessonDetailForCurriculum)
+                                .toList()))
+                .toList();
+        return new TeacherCurriculumView(result);
     }
 
     @Transactional
@@ -399,7 +422,18 @@ public class CourseCurriculumService {
                                 ? fileStorageService.lessonResourceFile(resource.getResourceId()).url()
                                 : null))
                 .toList();
-        return LessonDetail.from(lesson, resources);
+        Long examId = examRepository.findByLessonId(lesson.getId()).map(Exam::getId).orElse(null);
+        return LessonDetail.from(lesson, resources, examId);
+    }
+
+    private LessonDetail lessonDetailForCurriculum(Lesson lesson) {
+        List<LessonResourceSummary> resources = lessonResourceRepository
+                .findAllByLesson_IdOrderByPositionAscIdAsc(lesson.getId())
+                .stream()
+                .map(resource -> LessonResourceSummary.from(resource, null))
+                .toList();
+        Long examId = examRepository.findByLessonId(lesson.getId()).map(Exam::getId).orElse(null);
+        return LessonDetail.from(lesson, resources, examId);
     }
 
     private Course requireTeacherCourse(Long teacherId, Long courseId) {

@@ -430,7 +430,6 @@
   cursor: pointer;
 }
 
-.contractNotice,
 .readOnlyNotice,
 .errorNotice,
 .successNotice {
@@ -442,15 +441,6 @@
   font-size: 12px;
   line-height: 1.55;
 }
-
-.contractNotice {
-  border-color: #d7e8f5;
-  background: #f1f8fd;
-  color: #35566d;
-}
-
-.contractNotice strong { font-size: 12px; }
-.contractNotice span { color: #536e80; }
 
 .readOnlyNotice {
   border-color: #f1dba3;

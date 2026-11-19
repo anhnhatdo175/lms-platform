@@ -9,6 +9,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -28,6 +29,13 @@ public class CourseCurriculumController {
 
     public CourseCurriculumController(CourseCurriculumService curriculumService) {
         this.curriculumService = curriculumService;
+    }
+
+    @GetMapping("/api/v1/teacher/courses/{courseId}/curriculum")
+    public ApiResponse<TeacherCurriculumView> getCurriculum(
+            @AuthenticationPrincipal UserPrincipal principal,
+            @PathVariable @Min(1) Long courseId) {
+        return new ApiResponse<>(curriculumService.getCurriculum(principal, courseId));
     }
 
     @PostMapping("/api/v1/teacher/courses/{courseId}/sections")

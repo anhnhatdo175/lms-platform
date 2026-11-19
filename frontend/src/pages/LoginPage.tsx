@@ -1,5 +1,5 @@
-import { useEffect, useRef, useState, type ChangeEvent, type FormEvent } from 'react';
-import { Navigate, Route, Routes, useNavigate } from 'react-router';
+import { lazy, Suspense, useEffect, useRef, useState, type ChangeEvent, type FormEvent } from 'react';
+import { Link, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router';
 import {
   ApiRequestError,
   changePassword,
@@ -29,6 +29,9 @@ import { CourseCatalogPage } from './CourseCatalogPage';
 import { CourseLearningPage, LessonLearningPage } from './CourseLearningPage';
 import areaStyles from './UserArea.module.css';
 import styles from './LoginPage.module.css';
+
+const TeacherAssessmentsPage = lazy(() => import('../features/exams/TeacherAssessmentsPage')
+  .then((module) => ({ default: module.TeacherAssessmentsPage })));
 
 export function LoginPage() {
   const [isPasswordVisible, setIsPasswordVisible] = useState(false);
@@ -548,6 +551,7 @@ function AuthenticatedArea({
   user: AuthUser;
 }) {
   const navigate = useNavigate();
+  const location = useLocation();
   const [activeSection, setActiveSection] = useState<
     'profile' | 'security' | 'users' | 'audit' | 'courses' | 'course-categories'
   >('profile');
@@ -775,14 +779,23 @@ function AuthenticatedArea({
           Bảo mật
         </button>
         {user.roles.includes('TEACHER') && (
-          <button
-            aria-current={activeSection === 'courses' ? 'page' : undefined}
-            className={activeSection === 'courses' ? areaStyles.activeNav : ''}
-            onClick={() => selectSection('courses')}
-            type="button"
-          >
-            Soạn khóa học
-          </button>
+          <>
+            <button
+              aria-current={activeSection === 'courses' ? 'page' : undefined}
+              className={activeSection === 'courses' ? areaStyles.activeNav : ''}
+              onClick={() => selectSection('courses')}
+              type="button"
+            >
+              Soạn khóa học
+            </button>
+            <Link
+              aria-current={location.pathname === '/teacher/assessments' ? 'page' : undefined}
+              className={location.pathname === '/teacher/assessments' ? areaStyles.activeNav : ''}
+              to="/teacher/assessments"
+            >
+              Thi & ngân hàng câu hỏi
+            </Link>
+          </>
         )}
         {user.roles.includes('ADMIN') && (
           <>
@@ -815,22 +828,53 @@ function AuthenticatedArea({
         {user.roles.includes('STUDENT') && (
           <>
             <button
-              aria-current={window.location.pathname === '/courses' ? 'page' : undefined}
-              className={window.location.pathname === '/courses' ? areaStyles.activeNav : ''}
+              aria-current={location.pathname === '/courses' ? 'page' : undefined}
+              className={location.pathname === '/courses' ? areaStyles.activeNav : ''}
               onClick={() => void navigate('/courses')}
               type="button"
             >
               Khám phá khóa học
             </button>
             <button
-              aria-current={window.location.pathname === '/my-courses' ? 'page' : undefined}
-              className={window.location.pathname === '/my-courses' ? areaStyles.activeNav : ''}
+              aria-current={location.pathname === '/my-courses' || location.pathname.startsWith('/learning/')
+                ? 'page'
+                : undefined}
+              className={location.pathname === '/my-courses' || location.pathname.startsWith('/learning/')
+                ? areaStyles.activeNav
+                : ''}
               onClick={() => void navigate('/my-courses')}
               type="button"
             >
               Khóa học của tôi
             </button>
+            <Link
+              aria-current={location.pathname === '/cart' ? 'page' : undefined}
+              className={location.pathname === '/cart' ? areaStyles.activeNav : ''}
+              to="/cart"
+            >
+              Giỏ hàng
+            </Link>
+            <Link
+              aria-current={location.pathname === '/orders' || location.pathname.startsWith('/orders/')
+                ? 'page'
+                : undefined}
+              className={location.pathname === '/orders' || location.pathname.startsWith('/orders/')
+                ? areaStyles.activeNav
+                : ''}
+              to="/orders"
+            >
+              Đơn hàng
+            </Link>
           </>
+        )}
+        {user.roles.includes('ADMIN') && (
+          <Link
+            aria-current={location.pathname.startsWith('/admin/reconciliation') ? 'page' : undefined}
+            className={location.pathname.startsWith('/admin/reconciliation') ? areaStyles.activeNav : ''}
+            to="/admin/reconciliation"
+          >
+            Đối soát
+          </Link>
         )}
       </nav>
 
@@ -839,6 +883,16 @@ function AuthenticatedArea({
         {profileNotice && <div className={areaStyles.successNotice} role="status">{profileNotice}</div>}
 
         <Routes>
+          <Route
+            path="/teacher/assessments"
+            element={user.roles.includes('TEACHER')
+              ? (
+                <Suspense fallback={<p role="status">Đang mở công cụ giảng viên...</p>}>
+                  <TeacherAssessmentsPage accessToken={accessToken} />
+                </Suspense>
+              )
+              : <Navigate to="/" replace />}
+          />
           <Route
             path="/courses"
             element={<CourseCatalogPage accessToken={accessToken} canPurchase={user.roles.includes('STUDENT')} />}

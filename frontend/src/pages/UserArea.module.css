@@ -110,6 +110,7 @@
 
 .navigation {
   display: flex;
+  overflow-x: auto;
   min-height: 54px;
   align-items: stretch;
   gap: 28px;
@@ -118,16 +119,21 @@
   background: #fff;
 }
 
-.navigation button {
+.navigation button,
+.navigation a {
   position: relative;
   display: flex;
+  flex: 0 0 auto;
+  min-height: 44px;
   align-items: center;
   color: #687a76;
   font-size: 12px;
   font-weight: 550;
+  text-decoration: none;
 }
 
-.navigation button::after {
+.navigation button::after,
+.navigation a::after {
   position: absolute;
   right: 0;
   bottom: -1px;
@@ -140,7 +146,8 @@
   transition: opacity 150ms ease, transform 150ms ease;
 }
 
-.navigation button:hover { color: #195e56; }
+.navigation button:hover,
+.navigation a:hover { color: #195e56; }
 
 .navigation .activeNav {
   color: #0d756b;
@@ -150,6 +157,13 @@
 .navigation .activeNav::after {
   opacity: 1;
   transform: scaleX(1);
+}
+
+.navigation button:focus-visible,
+.navigation a:focus-visible {
+  border-radius: 4px;
+  outline: 2px solid #0d8178;
+  outline-offset: -2px;
 }
 
 .mainContent {
@@ -494,7 +508,8 @@
   .avatar { width: 30px; height: 30px; }
   .logoutButton { min-height: 36px; padding-inline: 8px; font-size: 10px; }
   .navigation { min-height: 48px; gap: 18px; padding-inline: 14px; }
-  .navigation button { font-size: 11px; }
+  .navigation button,
+  .navigation a { font-size: 11px; }
   .mainContent { width: min(100% - 24px, 1180px); }
   .profileCard { padding: 18px 16px; }
   .appFooter { padding-inline: 14px; font-size: 9px; }
