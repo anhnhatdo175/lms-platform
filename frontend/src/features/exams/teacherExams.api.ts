@@ -83,6 +83,17 @@ export const teacherExamsApi = {
     api.post<DataResponse<TeacherQuestion>>(`/teacher/courses/${courseId}/questions`, input)
       .then((response) => response.data),
 
+  updateQuestion: (questionId: number, input: {
+    content: string
+    questionType: QuestionType
+    difficulty: Difficulty
+    skillCode: string | null
+    explanation: string | null
+    options: Array<{ content: string; correct: boolean; position: number }>
+  }) =>
+    api.patch<DataResponse<TeacherQuestion>>(`/teacher/questions/${questionId}`, input)
+      .then((response) => response.data),
+
   deactivateQuestion: (questionId: number) =>
     api.delete(`/teacher/questions/${questionId}`),
 

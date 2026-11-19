@@ -67,6 +67,7 @@ export function TeacherAssessmentsPage({ accessToken }: { accessToken: string })
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
   const [optionInputs, setOptionInputs] = useState<QuestionOptionInput[]>(blankOptions)
+  const [editingQuestionId, setEditingQuestionId] = useState<number | null>(null)
   const [questionType, setQuestionType] = useState<'SINGLE_CHOICE' | 'MULTIPLE_CHOICE'>('SINGLE_CHOICE')
   const [scoreInput, setScoreInput] = useState('1')
 
@@ -155,7 +156,22 @@ export function TeacherAssessmentsPage({ accessToken }: { accessToken: string })
     }
   }
 
-  async function createQuestion(event: FormEvent<HTMLFormElement>) {
+  function editQuestion(question: TeacherQuestion) {
+    setEditingQuestionId(question.id)
+    setQuestionType(question.questionType)
+    setOptionInputs(question.options.map((option) => createOptionInput(option.content, option.correct)))
+    setError('')
+    setNotice('')
+  }
+
+  function cancelQuestionEdit() {
+    setEditingQuestionId(null)
+    setQuestionType('SINGLE_CHOICE')
+    setOptionInputs(blankOptions)
+    setError('')
+  }
+
+  async function saveQuestion(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     if (!courseId || isSavingQuestion) return
     const form = event.currentTarget
@@ -177,19 +193,33 @@ export function TeacherAssessmentsPage({ accessToken }: { accessToken: string })
     setError('')
     setNotice('')
     try {
-      const question = await teacherExamsApi.createQuestion(Number(courseId), {
+      const input = {
         content,
         questionType,
         difficulty: String(values.get('difficulty')) as Difficulty,
         skillCode: String(values.get('skillCode') ?? '').trim() || null,
         explanation: String(values.get('explanation') ?? '').trim() || null,
         options: options.map((option, index) => ({ ...option, position: index + 1 })),
-      })
-      setQuestions((current) => [question, ...current])
+      }
+      if (editingQuestionId !== null) {
+        const updated = await teacherExamsApi.updateQuestion(editingQuestionId, input)
+        setQuestions((current) => current.map((item) => item.id === updated.id ? updated : item))
+        setBuilder((current) => current ? {
+          ...current,
+          questions: current.questions.map((item) => item.questionId === updated.id
+            ? { ...item, question: updated }
+            : item),
+        } : current)
+        setNotice('Đã cập nhật câu hỏi.')
+      } else {
+        const created = await teacherExamsApi.createQuestion(Number(courseId), input)
+        setQuestions((current) => [created, ...current])
+        setNotice('Đã thêm câu hỏi vào ngân hàng của khóa học.')
+      }
       form.reset()
+      setEditingQuestionId(null)
       setQuestionType('SINGLE_CHOICE')
       setOptionInputs(blankOptions)
-      setNotice('Đã thêm câu hỏi vào ngân hàng của khóa học.')
     } catch (cause) {
       setError(apiErrorMessage(cause))
     } finally {
@@ -346,6 +376,7 @@ export function TeacherAssessmentsPage({ accessToken }: { accessToken: string })
     try {
       await teacherExamsApi.deactivateQuestion(questionId)
       setQuestions((current) => current.filter((question) => question.id !== questionId))
+      if (editingQuestionId === questionId) cancelQuestionEdit()
       setNotice('Đã ẩn câu hỏi khỏi ngân hàng.')
     } catch (cause) {
       setError(apiErrorMessage(cause))
@@ -378,6 +409,7 @@ export function TeacherAssessmentsPage({ accessToken }: { accessToken: string })
                 setIsLoadingCurriculum(Boolean(event.target.value))
                 setSections([])
                 setQuestions([])
+                setEditingQuestionId(null)
                 setSelectedLessonId(null)
                 setBuilder(null)
                 setStatistics(null)
@@ -402,8 +434,11 @@ export function TeacherAssessmentsPage({ accessToken }: { accessToken: string })
           <div className={styles.leftColumn}>
             <QuestionBank
               busyAction={busyAction}
+              editingQuestion={questions.find((question) => question.id === editingQuestionId) ?? null}
+              onCancelEdit={cancelQuestionEdit}
               isSaving={isSavingQuestion}
-              onCreate={createQuestion}
+              onEdit={editQuestion}
+              onSubmit={saveQuestion}
               onDeactivate={(id) => void deactivateQuestion(id)}
               onOptionChange={(index, field, value) => setOptionInputs((current) => current.map((option, optionIndex) => {
                 if (field === 'correct' && questionType === 'SINGLE_CHOICE') {
@@ -483,25 +518,31 @@ export function TeacherAssessmentsPage({ accessToken }: { accessToken: string })
 
 function QuestionBank({
   busyAction,
+  editingQuestion,
   isSaving,
-  onCreate,
+  onCancelEdit,
   onDeactivate,
+  onEdit,
   onOptionChange,
   onOptionRemove,
   onOptionAdd,
   onQuestionTypeChange,
+  onSubmit,
   options,
   questions,
   questionType,
 }: {
   busyAction: string
+  editingQuestion: TeacherQuestion | null
   isSaving: boolean
-  onCreate: (event: FormEvent<HTMLFormElement>) => void
+  onCancelEdit: () => void
   onDeactivate: (id: number) => void
+  onEdit: (question: TeacherQuestion) => void
   onOptionChange: (index: number, field: keyof QuestionOptionInput, value: string | boolean) => void
   onOptionRemove: (index: number) => void
   onOptionAdd: () => void
   onQuestionTypeChange: (type: 'SINGLE_CHOICE' | 'MULTIPLE_CHOICE') => void
+  onSubmit: (event: FormEvent<HTMLFormElement>) => void
   options: QuestionOptionInput[]
   questions: TeacherQuestion[]
   questionType: 'SINGLE_CHOICE' | 'MULTIPLE_CHOICE'
@@ -514,10 +555,11 @@ function QuestionBank({
           <p>{questions.length} câu đang hoạt động trong khóa học.</p>
         </div>
       </div>
-      <form className={styles.form} onSubmit={onCreate}>
+      <form className={styles.form} key={editingQuestion?.id ?? 'new-question'} onSubmit={onSubmit}>
+        {editingQuestion && <h3>Chỉnh sửa câu hỏi</h3>}
         <label>
           <span>Nội dung câu hỏi</span>
-          <textarea maxLength={10000} name="questionContent" required rows={3} />
+          <textarea defaultValue={editingQuestion?.content ?? ''} maxLength={10000} name="questionContent" required rows={3} />
         </label>
         <div className={styles.formGrid}>
           <label>
@@ -529,13 +571,13 @@ function QuestionBank({
           </label>
           <label>
             <span>Độ khó</span>
-            <select defaultValue="MEDIUM" name="difficulty">
+            <select defaultValue={editingQuestion?.difficulty ?? 'MEDIUM'} name="difficulty">
               {difficulties.map((difficulty) => <option key={difficulty.value} value={difficulty.value}>{difficulty.label}</option>)}
             </select>
           </label>
           <label>
             <span>Mã kỹ năng</span>
-            <input maxLength={150} name="skillCode" />
+            <input defaultValue={editingQuestion?.skillCode ?? ''} maxLength={150} name="skillCode" />
           </label>
         </div>
         <fieldset className={styles.optionsFieldset}>
@@ -570,9 +612,18 @@ function QuestionBank({
         </fieldset>
         <label>
           <span>Giải thích đáp án</span>
-          <textarea maxLength={5000} name="explanation" rows={2} />
+          <textarea defaultValue={editingQuestion?.explanation ?? ''} maxLength={5000} name="explanation" rows={2} />
         </label>
-        <Button type="submit" variant="primary" isLoading={isSaving}>Thêm vào ngân hàng</Button>
+        <div className={styles.actions}>
+          <Button type="submit" variant="primary" isLoading={isSaving}>
+            {editingQuestion ? 'Lưu thay đổi' : 'Thêm vào ngân hàng'}
+          </Button>
+          {editingQuestion && (
+            <Button disabled={isSaving} onClick={onCancelEdit} type="button" variant="outline">
+              Hủy chỉnh sửa
+            </Button>
+          )}
+        </div>
       </form>
 
       {questions.length > 0 && (
@@ -584,8 +635,17 @@ function QuestionBank({
                 <small>{question.questionType === 'SINGLE_CHOICE' ? 'Một đáp án' : 'Nhiều đáp án'} · {question.difficulty}{question.skillCode ? ` · ${question.skillCode}` : ''}</small>
               </div>
               <Button
+                aria-label={`Sửa câu hỏi ${question.id}`}
+                disabled={Boolean(busyAction) || isSaving}
+                onClick={() => onEdit(question)}
+                variant="outline"
+                size="sm"
+              >
+                Sửa
+              </Button>
+              <Button
                 aria-label={`Ẩn câu hỏi ${question.id}`}
-                disabled={Boolean(busyAction)}
+                disabled={Boolean(busyAction) || isSaving}
                 onClick={() => onDeactivate(question.id)}
                 variant="ghost"
                 size="sm"
